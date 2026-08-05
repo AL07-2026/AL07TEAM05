@@ -170,7 +170,7 @@ function HomePage() {
               disabled
               className={`${coralPill} cursor-not-allowed opacity-70`}
             >
-              가이드 요청 준비하기
+              가이드 요청하기
             </button>
             <p className="text-sm text-muted-foreground">
               다음 단계에서 연결 예정
