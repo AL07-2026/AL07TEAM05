@@ -408,8 +408,7 @@ function AgencyRequestPage() {
               onClick={submitRequest}
               type="button"
             >
-              {isSubmitting ? '제출 중' : '요청 제출'}
-              <ArrowRight className="size-4" />
+              가이드 요청하기
             </button>
           </div>
         </div>
