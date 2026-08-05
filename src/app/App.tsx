@@ -360,7 +360,7 @@ function AgencyRequestPage() {
         id: storedRequest.id,
         urgency: storedRequest.urgency,
       });
-      navigate('/agency/complete', { state: { request: storedRequest } });
+      void navigate('/agency/complete', { state: { request: storedRequest } });
     } catch (error) {
       trackAgencyEvent('agency_request_submit_error', { message: String(error) });
       setErrors({ submit: '요청 내용을 임시 저장하지 못했습니다. 입력값을 유지한 상태로 다시 시도해 주세요.' });
