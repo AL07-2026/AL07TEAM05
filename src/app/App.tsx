@@ -835,7 +835,6 @@ function Field({
   type?: string;
   value: string;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'name' | 'onChange' | 'required' | 'type' | 'value'>) {
-} & Omit<InputHTMLAttributes<HTMLInputElement>, 'name' | 'onChange' | 'required' | 'type' | 'value'>) {
   return (
     <label className="block text-sm font-semibold">
       {label}
