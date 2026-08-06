@@ -132,10 +132,10 @@ const sourcingExperienceOptions = [
 const urgencyOptions = ['오늘 안에 확인 필요', '3일 이내', '일주일 이내', '일정 협의 가능'];
 
 const linkButtonClass =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-coral px-6 py-3 text-sm font-semibold text-coral-foreground transition-colors hover:bg-coral/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-coral px-6 py-3 text-sm font-semibold text-coral-foreground transition-colors hover:bg-coral/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]';
 
 const secondaryButtonClass =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]';
 
 const inputClass =
   'mt-2 min-h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
@@ -152,9 +152,9 @@ function trackAgencyEvent(eventName: AgencyEventName, detail?: Record<string, un
 function Layout() {
   return (
     <div className="min-h-screen bg-background text-ink">
-      <header className="sticky top-0 z-10 border-b border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-          <Link className="text-lg font-semibold tracking-tight" to="/agency">
+      <header className="sticky top-0 z-10 border-b border-border bg-background/95">
+        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
+          <Link className="text-base font-semibold tracking-tight" to="/agency">
             TourMatch
           </Link>
           <nav className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
@@ -185,18 +185,18 @@ function AgencyPage() {
 
   return (
     <div>
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
-        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-          <div className="space-y-6">
+      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div className="space-y-5">
             <p className="text-sm font-semibold text-coral">행사 운영 가이드 매칭</p>
-            <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-5xl">
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
               일정, 언어, 지역 조건에 맞는 가이드 후보를 확인해 드립니다
             </h1>
-            <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+            <p className="text-sm leading-7 text-muted-foreground sm:text-base">
               행사나 여행 운영 업체가 필요한 조건을 제출하면 담당자가 요청 내용을 검토하고,
               적합한 가이드 후보 확인 후 연락드리는 초기 매칭 서비스입니다.
             </p>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            <p className="text-sm leading-6 text-muted-foreground">
               자격증 제출 여부와 경력 정보는 확인 대상이며, 제출 즉시 매칭이 확정된다고 안내하지
               않습니다.
             </p>
@@ -236,8 +236,8 @@ function AgencyPage() {
         </div>
       </section>
 
-      <section className="border-t border-border/60 bg-muted" id="process">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="border-t border-border bg-muted" id="process">
+        <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
           <div className="mb-8 space-y-3">
             <h2 className="text-2xl font-semibold tracking-tight">진행 과정</h2>
             <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
@@ -251,11 +251,11 @@ function AgencyPage() {
               ['3', '후보 탐색', '담당자가 조건에 맞는 가이드 후보를 확인합니다.'],
               ['4', '담당자 연락', '확인된 내용과 후속 안내를 연락드립니다.'],
             ].map(([step, title, body]) => (
-              <div className="rounded-2xl border border-border bg-card p-5" key={step}>
+              <div className="rounded-xl border border-border bg-card p-5" key={step}>
                 <div className="flex size-9 items-center justify-center rounded-full bg-coral text-sm font-semibold text-coral-foreground">
                   {step}
                 </div>
-                <h3 className="mt-4 font-semibold">{title}</h3>
+                <h3 className="mt-3 font-semibold">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
               </div>
             ))}
@@ -263,7 +263,7 @@ function AgencyPage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="grid gap-6 md:grid-cols-3">
           <InfoBlock
             icon={Globe2}
@@ -394,7 +394,7 @@ function AgencyRequestPage() {
               ['긴급도', form.urgency],
             ]}
           />
-          <div className="rounded-2xl border border-border bg-muted p-5">
+          <div className="rounded-xl border border-border bg-muted p-5">
             <h2 className="font-semibold">주요 업무</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.taskDescription}</p>
           </div>
@@ -645,7 +645,7 @@ function AgencyRequestPage() {
           />
         </FieldGroup>
 
-        <div className="rounded-2xl border border-border bg-card p-5">
+        <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="font-semibold">개인정보 및 연락 동의</h2>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             매칭 요청 처리와 담당자 연락을 위해 회사명, 담당자 이름, 연락처, 이메일, 요청 내용을
@@ -691,38 +691,38 @@ function AgencyCompletePage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">
-      <section className="mx-auto max-w-5xl px-4 py-14 text-center sm:px-6 sm:py-20">
-        <div className="mx-auto flex size-28 items-center justify-center rounded-full bg-coral-soft">
-          <div className="flex size-20 items-center justify-center rounded-full border border-coral/20">
-            <CheckCircle2 className="size-14 text-coral" strokeWidth={1.8} />
+      <section className="mx-auto max-w-4xl px-4 py-12 text-center sm:px-6 sm:py-16">
+        <div className="mx-auto flex size-24 items-center justify-center rounded-full bg-coral-soft sm:size-28">
+          <div className="flex size-20 items-center justify-center rounded-full border border-coral/20 sm:size-24">
+            <CheckCircle2 className="size-12 text-coral sm:size-14" strokeWidth={1.8} />
           </div>
         </div>
-        <p className="mt-8 text-sm font-bold tracking-wide text-coral">가이드 요청 완료</p>
-        <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+        <p className="mt-6 text-sm font-bold tracking-wide text-coral sm:mt-8">가이드 요청 완료</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
           가이드 요청이 접수되었습니다
         </h1>
-        <p className="mt-6 text-lg font-semibold">TourMatch에 요청해 주셔서 감사합니다.</p>
+        <p className="mt-4 text-base font-semibold sm:text-lg">TourMatch에 요청해 주셔서 감사합니다.</p>
 
-        <div className="mx-auto mt-10 flex max-w-3xl items-center gap-4 rounded-2xl border border-coral/20 bg-coral-soft p-5 text-left sm:p-6">
+        <div className="mx-auto mt-8 flex max-w-3xl items-center gap-4 rounded-xl border border-coral/20 bg-coral-soft p-5 text-left sm:mt-10 sm:p-6">
           <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-coral text-white">
             <Check className="size-6" strokeWidth={2.6} />
           </span>
-          <p className="font-semibold leading-7">
+          <p className="text-sm leading-7 font-semibold sm:text-base">
             요청하신 조건에 적합한 가이드가 확인되면,
             <br className="hidden sm:block" /> 작성해 주신 여행사 연락처로 안내드리겠습니다.
           </p>
         </div>
 
-        <div className="mt-14 text-left">
+        <div className="mt-12 text-left sm:mt-14">
           <p className="text-xs font-bold tracking-[0.18em] text-muted-foreground">NEXT STEP</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight">접수 이후에는 이렇게 진행됩니다</h2>
-          <ol className="mt-7 grid gap-4 md:grid-cols-3">
+          <ol className="mt-6 grid gap-4 md:grid-cols-3">
             {completionSteps.map(([number, title, description, Icon]) => (
-              <li className="rounded-2xl border border-border bg-card p-6 shadow-sm" key={number}>
-                <span className="flex size-12 items-center justify-center rounded-xl bg-muted text-coral">
+              <li className="rounded-xl border border-border bg-card p-5" key={number}>
+                <span className="flex size-11 items-center justify-center rounded-lg bg-muted text-coral">
                   <Icon className="size-5" />
                 </span>
-                <p className="mt-6 text-xs font-bold text-coral">{number}</p>
+                <p className="mt-4 text-xs font-bold text-coral">{number}</p>
                 <h3 className="mt-2 font-semibold">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
               </li>
@@ -754,11 +754,11 @@ function FeatureCard({
   title: string;
 }) {
   return (
-    <div className={`rounded-2xl border border-border bg-card p-6 shadow-sm ${className}`}>
-      <div className="flex size-12 items-center justify-center rounded-xl bg-coral-soft">
-        <Icon className="size-6 text-coral" />
+    <div className={`rounded-xl border border-border bg-card p-5 ${className}`}>
+      <div className="flex size-11 items-center justify-center rounded-lg bg-coral-soft">
+        <Icon className="size-5 text-coral" />
       </div>
-      <h2 className="mt-4 text-base font-semibold">{title}</h2>
+      <h2 className="mt-3 text-base font-semibold">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
     </div>
   );
@@ -794,7 +794,7 @@ function RequestShell({
   title: string;
 }) {
   return (
-    <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
+    <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
       <div className="mb-8 space-y-3">
         <p className="text-sm font-semibold text-coral">{eyebrow}</p>
         <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
@@ -807,7 +807,7 @@ function RequestShell({
 
 function FieldGroup({ children, title }: { children: ReactNode; title: string }) {
   return (
-    <section className="rounded-3xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="mt-5 grid gap-5 md:grid-cols-2">{children}</div>
     </section>
@@ -949,7 +949,7 @@ function SummaryGrid({ items }: { items: [string, string][] }) {
   return (
     <dl className="grid gap-3 md:grid-cols-2">
       {items.map(([label, value]) => (
-        <div className="rounded-2xl border border-border bg-card p-4" key={label}>
+        <div className="rounded-xl border border-border bg-card p-4" key={label}>
           <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
           <dd className="mt-1 text-sm font-medium text-ink">{value || '-'}</dd>
         </div>
@@ -976,7 +976,7 @@ function validateConsent(form: AgencyRequest) {
 
 function NotFoundPage() {
   return (
-    <section className="mx-auto max-w-6xl px-4 py-24 text-center sm:px-6">
+    <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
       <p className="text-sm font-medium text-coral">404</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">
         페이지를 찾을 수 없습니다
