@@ -2,12 +2,16 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
+  Check,
   CheckCircle2,
   ClipboardCheck,
   Globe2,
   Handshake,
   Languages,
+  Search,
+  Send,
   ShieldCheck,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -24,7 +28,6 @@ import {
   Outlet,
   RouterProvider,
   createBrowserRouter,
-  useLocation,
   useNavigate,
 } from 'react-router';
 
@@ -320,19 +323,18 @@ function AgencyRequestPage() {
 
   function goToConfirm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const nextErrors = validateRequest(form);
+    const nextErrors = validateConsent(form);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
       return;
     }
 
-    setStep('confirm');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    submitRequest();
   }
 
   function submitRequest() {
-    const nextErrors = validateRequest(form);
+    const nextErrors = validateConsent(form);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
@@ -681,67 +683,62 @@ function AgencyRequestPage() {
 }
 
 function AgencyCompletePage() {
-  const location = useLocation();
-  const stateRequest = (location.state as { request?: StoredAgencyRequest } | null)?.request;
-  const storedRequest = useMemo(() => {
-    if (stateRequest) {
-      return stateRequest;
-    }
-
-    try {
-      const rawRequest = localStorage.getItem('latestAgencyRequest');
-      return rawRequest ? (JSON.parse(rawRequest) as StoredAgencyRequest) : null;
-    } catch {
-      return null;
-    }
-  }, [stateRequest]);
+  const completionSteps = [
+    ['01', '요청 내용 확인', '입력해 주신 여행 일정과 가이드 조건을 꼼꼼히 확인합니다.', Check],
+    ['02', '가이드 검토', 'TourMatch가 요청 조건에 맞는 가이드를 확인합니다.', Search],
+    ['03', '여행사로 안내', '적합한 가이드가 있을 경우 입력해 주신 연락처로 안내드립니다.', Send],
+  ] as const;
 
   return (
-    <section className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
-      <div className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <div className="flex size-12 items-center justify-center rounded-full bg-coral-soft">
-          <CheckCircle2 className="size-7 text-coral" />
-        </div>
-        <p className="mt-6 text-sm font-semibold text-coral">요청 접수 완료</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          요청 내용을 확인한 뒤 담당자가 연락드립니다
-        </h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
-          조건에 맞는 후보가 확인되면 별도로 안내드립니다. 현재 MVP에서는 제출 내용이 브라우저에
-          임시 저장됩니다.
-        </p>
-
-        {storedRequest ? (
-          <div className="mt-8">
-            <SummaryGrid
-              items={[
-                ['회사명', storedRequest.companyName],
-                ['담당자', storedRequest.contactName],
-                ['연락처', storedRequest.contactPhone],
-                ['필요 언어', storedRequest.languages.join(', ')],
-                ['행사 지역', storedRequest.region],
-                ['행사 기간', `${storedRequest.startDate} ~ ${storedRequest.endDate}`],
-                ['필요 가이드 인원', `${storedRequest.guideCount}명`],
-                ['긴급도', storedRequest.urgency],
-              ]}
-            />
+    <div className="min-h-[calc(100vh-4rem)] bg-background">
+      <section className="mx-auto max-w-5xl px-4 py-14 text-center sm:px-6 sm:py-20">
+        <div className="mx-auto flex size-28 items-center justify-center rounded-full bg-coral-soft">
+          <div className="flex size-20 items-center justify-center rounded-full border border-coral/20">
+            <CheckCircle2 className="size-14 text-coral" strokeWidth={1.8} />
           </div>
-        ) : (
-          <p className="mt-8 rounded-2xl border border-border bg-muted p-5 text-sm text-muted-foreground">
-            이 브라우저에서 확인할 수 있는 최근 요청 내역이 없습니다.
-          </p>
-        )}
-
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link className={linkButtonClass} to="/agency">
-            Agency 안내로 돌아가기
-          </Link>
-          <Link className={secondaryButtonClass} to="/agency/request">
-            새 요청 작성
-          </Link>
         </div>
-      </div>
-    </section>
+        <p className="mt-8 text-sm font-bold tracking-wide text-coral">가이드 요청 완료</p>
+        <h1 className="mt-4 text-3xl font-semibold tracking-tight sm:text-5xl">
+          가이드 요청이 접수되었습니다
+        </h1>
+        <p className="mt-6 text-lg font-semibold">TourMatch에 요청해 주셔서 감사합니다.</p>
+
+        <div className="mx-auto mt-10 flex max-w-3xl items-center gap-4 rounded-2xl border border-coral/20 bg-coral-soft p-5 text-left sm:p-6">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-coral text-white">
+            <Check className="size-6" strokeWidth={2.6} />
+          </span>
+          <p className="font-semibold leading-7">
+            요청하신 조건에 적합한 가이드가 확인되면,
+            <br className="hidden sm:block" /> 작성해 주신 여행사 연락처로 안내드리겠습니다.
+          </p>
+        </div>
+
+        <div className="mt-14 text-left">
+          <p className="text-xs font-bold tracking-[0.18em] text-muted-foreground">NEXT STEP</p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight">접수 이후에는 이렇게 진행됩니다</h2>
+          <ol className="mt-7 grid gap-4 md:grid-cols-3">
+            {completionSteps.map(([number, title, description, Icon]) => (
+              <li className="rounded-2xl border border-border bg-card p-6 shadow-sm" key={number}>
+                <span className="flex size-12 items-center justify-center rounded-xl bg-muted text-coral">
+                  <Icon className="size-5" />
+                </span>
+                <p className="mt-6 text-xs font-bold text-coral">{number}</p>
+                <h3 className="mt-2 font-semibold">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <p className="mt-8 text-sm text-muted-foreground">
+          ※ 요청 접수는 가이드 배정을 보장하지 않습니다.
+        </p>
+        <Link className={`${linkButtonClass} mt-8 min-w-52`} to="/agency">
+          <Sparkles className="size-4" />
+          확인
+        </Link>
+      </section>
+    </div>
   );
 }
 
@@ -965,51 +962,8 @@ function ErrorText({ message }: { message: string }) {
   return <p className="mt-2 text-sm font-medium text-red-700">{message}</p>;
 }
 
-function validateRequest(form: AgencyRequest) {
+function validateConsent(form: AgencyRequest) {
   const nextErrors: Record<string, string> = {};
-  const phonePattern = /^[0-9+\-\s()]{8,20}$/;
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  const participantCount = Number(form.participantCount);
-  const guideCount = Number(form.guideCount);
-
-  if (!form.companyName.trim()) nextErrors.companyName = '회사명을 입력해 주세요.';
-  if (!form.contactName.trim()) nextErrors.contactName = '담당자 이름을 입력해 주세요.';
-  if (!form.contactPhone.trim()) {
-    nextErrors.contactPhone = '담당자 연락처를 입력해 주세요.';
-  } else if (!phonePattern.test(form.contactPhone.trim())) {
-    nextErrors.contactPhone = '연락 가능한 전화번호 형식으로 입력해 주세요.';
-  }
-  if (form.contactEmail.trim() && !emailPattern.test(form.contactEmail.trim())) {
-    nextErrors.contactEmail = '이메일 형식을 확인해 주세요.';
-  }
-  if (!form.eventName.trim()) nextErrors.eventName = '행사 이름을 입력해 주세요.';
-  if (!form.eventType) nextErrors.eventType = '행사 유형을 선택해 주세요.';
-  if (!form.region.trim()) nextErrors.region = '진행 지역을 입력해 주세요.';
-  if (!form.startDate) nextErrors.startDate = '시작 날짜를 선택해 주세요.';
-  if (!form.endDate) {
-    nextErrors.endDate = '종료 날짜를 선택해 주세요.';
-  } else if (form.startDate && form.endDate < form.startDate) {
-    nextErrors.endDate = '종료 날짜는 시작 날짜보다 빠를 수 없습니다.';
-  }
-  if (!Number.isInteger(participantCount) || participantCount < 1) {
-    nextErrors.participantCount = '참가 인원은 1명 이상이어야 합니다.';
-  }
-  if (!Number.isInteger(guideCount) || guideCount < 1) {
-    nextErrors.guideCount = '가이드 인원은 1명 이상이어야 합니다.';
-  }
-  if (form.languages.length === 0) {
-    nextErrors.languages = '필요한 언어를 하나 이상 선택해 주세요.';
-  } else if (form.languages.includes('기타') && !form.customLanguage.trim()) {
-    nextErrors.languages = '기타 언어를 직접 입력해 주세요.';
-  }
-  if (!form.taskDescription.trim()) nextErrors.taskDescription = '주요 업무를 입력해 주세요.';
-  if (!form.certificatePriority) {
-    nextErrors.certificatePriority = '자격증 중요도를 선택해 주세요.';
-  }
-  if (!form.sourcingExperience) {
-    nextErrors.sourcingExperience = '기존 섭외 경험을 선택해 주세요.';
-  }
-  if (!form.urgency) nextErrors.urgency = '요청 긴급도를 선택해 주세요.';
   if (!form.privacyConsent) {
     nextErrors.privacyConsent = '개인정보 수집 안내 확인이 필요합니다.';
   }
