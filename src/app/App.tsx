@@ -191,7 +191,7 @@ function Layout() {
         <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© 2026 TourMatch. 여행사와 가이드의 더 좋은 연결을 만듭니다.</p>
           <Link
-            className="inline-flex min-h-10 w-fit items-center justify-center rounded-lg border border-border bg-background px-4 py-2 font-semibold text-ink shadow-sm transition hover:border-coral hover:text-coral"
+            className="w-fit font-medium transition-colors hover:text-ink"
             to="/admin"
           >
             관리자 페이지
