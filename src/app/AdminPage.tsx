@@ -19,6 +19,9 @@ import {
   X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AdminRequestsPage } from '@/app/admin/AdminRequestsPage';
+
+type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'guides' | 'messages' | 'settings';
 
 type RequestStatus = '신규' | '검토 중' | '정보 보완' | '가이드 탐색' | '제안 완료' | '매칭 확정';
 
@@ -75,10 +78,10 @@ function loadLatestRequest(): AdminRequest | null {
 }
 
 export function AdminPage() {
-  const [activePage, setActivePageState] = useState<'dashboard' | 'analytics'>(() =>
+  const [activePage, setActivePageState] = useState<AdminSection>(() =>
     new URLSearchParams(window.location.search).get('view') === 'analytics' ? 'analytics' : 'dashboard',
   );
-  const setActivePage = (page: 'dashboard' | 'analytics') => {
+  const setActivePage = (page: AdminSection) => {
     setActivePageState(page);
     window.history.replaceState(null, '', page === 'analytics' ? '/admin?view=analytics' : '/admin');
   };
@@ -108,7 +111,7 @@ export function AdminPage() {
           </div>
         </header>
 
-        {activePage === 'analytics' ? <AnalyticsPage /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
+        {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, 김관리님</h1><p className="mt-2 text-sm text-slate-500">오늘 확인해야 할 신규 요청이 <b className="text-slate-800">{requests.filter((r) => r.status === '신규').length}건</b> 있습니다.</p></div>
             <button className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm"><Sparkles className="size-4" />가이드 후보 찾기</button>
@@ -144,9 +147,9 @@ export function AdminPage() {
   );
 }
 
-function Sidebar({ activePage, onNavigate, open, onClose }: { activePage: 'dashboard' | 'analytics'; onNavigate: (page: 'dashboard' | 'analytics') => void; open: boolean; onClose: () => void }) {
-  const navigate = (page: 'dashboard' | 'analytics') => { onNavigate(page); onClose(); };
-  return <><button aria-label="메뉴 닫기" className={`fixed inset-0 z-30 bg-slate-950/30 lg:hidden ${open ? 'block' : 'hidden'}`} onClick={onClose} /><aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}><div className="flex h-16 items-center justify-between border-b border-slate-100 px-5"><div className="flex items-center gap-2.5"><span className="flex size-8 items-center justify-center rounded-xl bg-rose-500 text-white"><Sparkles className="size-4" /></span><div><p className="font-bold tracking-tight">TourMatch</p><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-slate-400">Admin</p></div></div><button className="lg:hidden" onClick={onClose}><X className="size-5" /></button></div><nav className="flex-1 p-3"><p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Workspace</p><SideItem icon={LayoutDashboard} label="대시보드" active={activePage === 'dashboard'} onClick={() => navigate('dashboard')} /><SideItem icon={LineChart} label="Google Analytics" active={activePage === 'analytics'} onClick={() => navigate('analytics')} /><SideItem icon={ClipboardList} label="매칭 요청" count="12" /><SideItem icon={Building2} label="여행사 관리" /><SideItem icon={UsersRound} label="가이드 관리" /><p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-slate-400">Management</p><SideItem icon={MessageSquareText} label="메시지" count="3" /><SideItem icon={Settings} label="설정" /></nav><div className="m-3 rounded-2xl bg-slate-50 p-4"><CircleHelp className="size-5 text-rose-500" /><p className="mt-3 text-xs font-bold">도움이 필요하신가요?</p><p className="mt-1 text-[11px] leading-4 text-slate-400">운영 가이드와 자주 묻는 질문을 확인하세요.</p><button className="mt-3 text-[11px] font-bold text-rose-500">운영 가이드 보기 →</button></div></aside></>;
+function Sidebar({ activePage, onNavigate, open, onClose }: { activePage: AdminSection; onNavigate: (page: AdminSection) => void; open: boolean; onClose: () => void }) {
+  const navigate = (page: AdminSection) => { onNavigate(page); onClose(); };
+  return <><button aria-label="메뉴 닫기" className={`fixed inset-0 z-30 bg-slate-950/30 lg:hidden ${open ? 'block' : 'hidden'}`} onClick={onClose} /><aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}><div className="flex h-16 items-center justify-between border-b border-slate-100 px-5"><div className="flex items-center gap-2.5"><span className="flex size-8 items-center justify-center rounded-xl bg-rose-500 text-white"><Sparkles className="size-4" /></span><div><p className="font-bold tracking-tight">TourMatch</p><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-slate-400">Admin</p></div></div><button className="lg:hidden" onClick={onClose}><X className="size-5" /></button></div><nav className="flex-1 p-3"><p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Workspace</p><SideItem icon={LayoutDashboard} label="대시보드" active={activePage === 'dashboard'} onClick={() => navigate('dashboard')} /><SideItem icon={LineChart} label="Google Analytics" active={activePage === 'analytics'} onClick={() => navigate('analytics')} /><SideItem icon={ClipboardList} label="매칭 요청" count="12" active={activePage === 'requests'} onClick={() => navigate('requests')} /><SideItem icon={Building2} label="여행사 관리" active={activePage === 'agencies'} onClick={() => navigate('agencies')} /><SideItem icon={UsersRound} label="가이드 관리" active={activePage === 'guides'} onClick={() => navigate('guides')} /><p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-slate-400">Management</p><SideItem icon={MessageSquareText} label="메시지" count="3" active={activePage === 'messages'} onClick={() => navigate('messages')} /><SideItem icon={Settings} label="설정" active={activePage === 'settings'} onClick={() => navigate('settings')} /></nav><div className="m-3 rounded-2xl bg-slate-50 p-4"><CircleHelp className="size-5 text-rose-500" /><p className="mt-3 text-xs font-bold">도움이 필요하신가요?</p><p className="mt-1 text-[11px] leading-4 text-slate-400">운영 가이드와 자주 묻는 질문을 확인하세요.</p><button className="mt-3 text-[11px] font-bold text-rose-500">운영 가이드 보기 →</button></div></aside></>;
 }
 
 function SideItem({ icon: Icon, label, active, count, onClick }: { icon: typeof LayoutDashboard; label: string; active?: boolean; count?: string; onClick?: () => void }) { return <button onClick={onClick} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${active ? 'bg-rose-50 text-rose-600' : 'text-slate-500 hover:bg-slate-50'}`}><Icon className="size-[18px]" /><span>{label}</span>{count && <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? 'bg-white' : 'bg-slate-100'}`}>{count}</span>}</button>; }
