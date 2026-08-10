@@ -33,6 +33,8 @@ import {
 } from 'react-router';
 import GuideRegisterPage from './pages/GuideRegisterPage';
 
+import { AdminPage } from '@/app/AdminPage';
+
 type AgencyRequest = {
   companyName: string;
   contactName: string;
@@ -149,6 +151,13 @@ const textareaClass =
 
 function trackAgencyEvent(eventName: AgencyEventName, detail?: Record<string, unknown>) {
   window.dispatchEvent(new CustomEvent(eventName, { detail }));
+  try {
+    const stored = JSON.parse(localStorage.getItem('agencyAnalyticsEvents') || '[]') as unknown[];
+    stored.push({ eventName, detail, createdAt: new Date().toISOString() });
+    localStorage.setItem('agencyAnalyticsEvents', JSON.stringify(stored.slice(-500)));
+  } catch {
+    // Analytics must never interrupt the request flow.
+  }
 }
 
 function Layout() {
@@ -156,11 +165,11 @@ function Layout() {
     <div className="min-h-screen bg-background text-ink">
       <header className="sticky top-0 z-10 border-b border-border bg-background/95">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
-          <Link className="text-base font-semibold tracking-tight" to="/agency">
+          <Link className="text-base font-semibold tracking-tight" to="/">
             TourMatch
           </Link>
           <nav className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
-            <Link className="hover:text-ink" to="/agency">
+            <Link className="hover:text-ink" to="/">
               안내
             </Link>
             <Link className="hover:text-ink" to="/agency/request">
@@ -169,12 +178,26 @@ function Layout() {
             <Link className="hover:text-ink" to="/guide/register">
               가이드 등록
             </Link>
+            <Link className="hover:text-ink" to="/jobs">
+              채용정보
+            </Link>
           </nav>
         </div>
       </header>
       <main>
         <Outlet />
       </main>
+      <footer className="border-t border-border bg-muted/40">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>© 2026 TourMatch. 여행사와 가이드의 더 좋은 연결을 만듭니다.</p>
+          <Link
+            className="w-fit font-medium transition-colors hover:text-ink"
+            to="/admin"
+          >
+            관리자 페이지
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -1001,6 +1024,7 @@ function NotFoundPage() {
 }
 
 const router = createBrowserRouter([
+  { path: '/admin/*', Component: AdminPage },
   {
     path: '/',
     Component: Layout,
