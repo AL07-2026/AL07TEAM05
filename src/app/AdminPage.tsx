@@ -80,12 +80,14 @@ function loadLatestRequest(): AdminRequest | null {
 }
 
 export function AdminPage() {
-  const [activePage, setActivePageState] = useState<AdminSection>(() =>
-    new URLSearchParams(window.location.search).get('view') === 'analytics' ? 'analytics' : 'dashboard',
-  );
+  const [activePage, setActivePageState] = useState<AdminSection>(() => {
+    const requested = new URLSearchParams(window.location.search).get('view');
+    const sections: AdminSection[] = ['dashboard', 'analytics', 'requests', 'agencies', 'guides', 'messages', 'settings'];
+    return sections.includes(requested as AdminSection) ? requested as AdminSection : 'dashboard';
+  });
   const setActivePage = (page: AdminSection) => {
     setActivePageState(page);
-    window.history.replaceState(null, '', page === 'analytics' ? '/admin?view=analytics' : '/admin');
+    window.history.replaceState(null, '', page === 'dashboard' ? '/admin' : `/admin?view=${page}`);
   };
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('전체 상태');
