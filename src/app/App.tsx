@@ -31,8 +31,6 @@ import {
   useNavigate,
 } from 'react-router';
 
-import { JobsPage } from '@/TEST1/JobsPage';
-import { StandaloneJobsPage } from '@/TEST2/StandaloneJobsPage';
 import { AdminPage } from '@/app/AdminPage';
 
 type AgencyRequest = {
@@ -1006,14 +1004,12 @@ function NotFoundPage() {
 }
 
 const router = createBrowserRouter([
-  { path: '/test2', Component: StandaloneJobsPage },
   { path: '/admin/*', Component: AdminPage },
   {
     path: '/',
     Component: Layout,
     children: [
       { index: true, Component: HomePage },
-      { path: 'jobs', Component: JobsPage },
       { path: 'agency', Component: AgencyPage },
       { path: 'agency/request', Component: AgencyRequestPage },
       { path: 'agency/complete', Component: AgencyCompletePage },
