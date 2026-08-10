@@ -182,6 +182,17 @@ function Layout() {
       <main>
         <Outlet />
       </main>
+      <footer className="border-t border-border bg-muted/40">
+        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>© 2026 TourMatch. 여행사와 가이드의 더 좋은 연결을 만듭니다.</p>
+          <Link
+            className="w-fit font-medium transition-colors hover:text-ink"
+            to="/admin"
+          >
+            관리자 페이지
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 }
