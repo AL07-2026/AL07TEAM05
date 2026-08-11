@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Sparkles } from 'lucide-react';
 import { getAuth, signInAnonymously } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytesResumable } from 'firebase/storage';
-import { app, db, storage } from '../../lib/firebase';
+import { app, db } from '../../lib/firebase';
 
 const GUIDE_LANGUAGES = ['영어', '일본어', '중국어', '베트남어', '태국어', '스페인어', '기타'];
 const REGION_OPTIONS = ['서울', '경기', '부산', '대구', '대전', '광주', '제주', '인천', '강원', '경상', '전라', '충청', '기타'];
@@ -16,8 +15,6 @@ const secondaryButtonClass =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]';
 const inputClass =
   'min-h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
-const textareaClass =
-  'min-h-28 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
 
 const initialForm = {
   name: '',
@@ -28,9 +25,6 @@ const initialForm = {
   experience: '',
   certificateLanguage: '',
   certificateNumber: '',
-  certificateFile: null as File | null,
-  profilePhoto: null as File | null,
-  resume: null as File | null,
   introduction: '',
   privacyConsent: false,
 };
@@ -161,22 +155,8 @@ function validate(form: typeof initialForm) {
   if (!form.experience) errors.experience = '가이드 경력을 선택해 주세요.';
   if (!form.certificateLanguage.trim()) errors.certificateLanguage = '자격 언어를 입력해 주세요.';
   if (!form.certificateNumber.trim()) errors.certificateNumber = '자격증 번호를 입력해 주세요.';
-  if (!form.certificateFile) errors.certificateFile = '자격증 사진 또는 PDF를 선택해 주세요.';
   if (!form.privacyConsent) errors.privacyConsent = '개인정보 수집 동의가 필요합니다.';
   return errors;
-}
-
-function buildSafeFileName(file: File, prefix: string) {
-  const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return `${prefix}_${timestamp}_${Math.random().toString(36).slice(2, 8)}_${sanitized}`;
-}
-
-async function uploadFile(uid: string, file: File, folder: string): Promise<string> {
-  const fileRef = ref(storage, `guide-files/${uid}/${folder}/${buildSafeFileName(file, folder)}`);
-  const snapshot = await uploadBytesResumable(fileRef, file);
-  const downloadUrl = await getDownloadURL(snapshot.ref);
-  return downloadUrl;
 }
 
 async function resolveUid() {
@@ -194,7 +174,6 @@ export default function GuideRegisterPage() {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
-  const [showOptional, setShowOptional] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -218,16 +197,6 @@ export default function GuideRegisterPage() {
     try {
       const uid = await resolveUid();
 
-      let profilePhotoUrl: string | null = null;
-      if (form.profilePhoto) {
-        profilePhotoUrl = await uploadFile(uid, form.profilePhoto, 'profile');
-      }
-
-      await Promise.all([
-        form.certificateFile ? uploadFile(uid, form.certificateFile, 'certificate') : Promise.resolve(),
-        form.resume ? uploadFile(uid, form.resume, 'resume') : Promise.resolve(),
-      ]);
-
       const profileData = {
         ownerUid: uid,
         name: form.name.trim(),
@@ -235,7 +204,7 @@ export default function GuideRegisterPage() {
         regions: form.regions,
         experienceRange: form.experience,
         introduction: form.introduction.trim(),
-        profilePhotoUrl,
+        profilePhotoUrl: null,
         profileStatus: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -246,8 +215,8 @@ export default function GuideRegisterPage() {
         phone: form.phone.trim(),
         certificateLanguage: form.certificateLanguage.trim(),
         certificateNumber: form.certificateNumber.trim(),
-        certificateFilePath: `guide-files/${uid}/certificate`,
-        resumeFilePath: form.resume ? `guide-files/${uid}/resume` : null,
+        certificateFilePath: null,
+        resumeFilePath: null,
         privacyConsent: form.privacyConsent,
         verificationStatus: 'pending',
         submittedAt: serverTimestamp(),
@@ -275,7 +244,7 @@ export default function GuideRegisterPage() {
           </div>
           <h1 className="mt-4 text-2xl font-semibold">가이드 등록이 완료됐어요</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            사진, 이력서와 프로필 정보는 이후에도 수정할 수 있어요.
+            기본 정보를 먼저 등록할 수 있어요. 추가 자료 제출 기능은 추후 제공될 예정입니다.
           </p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">
             <Link className={linkButtonClass} to="/">
@@ -296,7 +265,7 @@ export default function GuideRegisterPage() {
         <p className="text-sm font-semibold text-coral">가이드 모집</p>
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">가이드로 등록하기</h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          필수 정보만 빠르게 등록하세요. 사진과 이력서는 나중에도 추가하거나 변경할 수 있어요.
+          기본 정보를 먼저 등록할 수 있어요. 추가 자료 제출 기능은 추후 제공될 예정입니다.
         </p>
       </div>
 
@@ -384,57 +353,11 @@ export default function GuideRegisterPage() {
               />
               {errors.certificateNumber ? <p className="mt-2 text-sm font-medium text-red-700">{errors.certificateNumber}</p> : null}
             </label>
-            <label className="block text-sm font-semibold md:col-span-2">
-              자격증 사진 또는 PDF <RequiredStar />
-              <input
-                className="mt-2 block w-full text-sm text-muted-foreground"
-                accept="image/*,.pdf"
-                name="certificateFile"
-                type="file"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] ?? null;
-                  setForm((current) => ({ ...current, certificateFile: file }));
-                }}
-              />
-              {errors.certificateFile ? <p className="mt-2 text-sm font-medium text-red-700">{errors.certificateFile}</p> : null}
-            </label>
           </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            무료 MVP 단계에서는 자격증 파일 업로드를 지원하지 않습니다. 추후 업로드 기능이 제공될 예정입니다.
+          </p>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowOptional((prev) => !prev)}
-          className="flex w-full items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 text-sm font-semibold text-muted-foreground transition hover:bg-muted"
-        >
-          <span>프로필 추가 정보 (선택)</span>
-          {showOptional ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-        </button>
-
-        {showOptional && (
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5">
-            <p className="text-xs text-muted-foreground">사진, 이력서, 자기소개는 나중에도 추가하거나 변경할 수 있어요.</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <label className="block text-sm font-semibold text-muted-foreground">
-                프로필 사진
-                <input className={inputClass} type="file" onChange={(event) => setForm((current) => ({ ...current, profilePhoto: event.target.files?.[0] ?? null }))} />
-              </label>
-              <label className="block text-sm font-semibold text-muted-foreground">
-                이력서
-                <input className={inputClass} type="file" onChange={(event) => setForm((current) => ({ ...current, resume: event.target.files?.[0] ?? null }))} />
-              </label>
-            </div>
-            <label className="mt-4 block text-sm font-semibold text-muted-foreground">
-              자기소개
-              <textarea
-                className={textareaClass}
-                placeholder="짧은 자기소개를 적어주세요."
-                value={form.introduction}
-                onChange={(event) => setForm((current) => ({ ...current, introduction: event.target.value }))}
-              />
-            </label>
-            <p className="mt-2 text-xs text-muted-foreground">사진, 이력서, 자기소개는 나중에도 수정할 수 있습니다.</p>
-          </div>
-        )}
 
         <section className="space-y-3">
           <label className="flex gap-3 text-sm leading-6">
