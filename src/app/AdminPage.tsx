@@ -17,42 +17,17 @@ import {
   UsersRound,
   X,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AdminRequestsPage } from '@/app/admin/AdminRequestsPage';
 import { AdminPartnersPage } from '@/app/admin/AdminPartnersPage';
 import { AdminOperationsPage } from '@/app/admin/AdminOperationsPage';
 import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
+import { getAgencyRequests, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
 
 type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings';
 
-type RequestStatus = '신규' | '검토 중' | '정보 보완' | '가이드 탐색' | '제안 완료' | '매칭 확정';
-
-type AdminRequest = {
-  id: string;
-  company: string;
-  manager: string;
-  phone: string;
-  email: string;
-  event: string;
-  region: string;
-  date: string;
-  languages: string[];
-  guides: number;
-  urgency: '긴급' | '보통';
-  status: RequestStatus;
-  assignee: string;
-  task: string;
-  budget: string;
-  createdAt: string;
-};
-
-const seedRequests: AdminRequest[] = [
-  { id: 'TM-1042', company: '트래블메이트', manager: '김민지', phone: '010-2841-9203', email: 'minji@travelmate.kr', event: '글로벌 파트너 초청 서울 투어', region: '서울', date: '2026. 08. 14 - 08. 16', languages: ['영어'], guides: 3, urgency: '긴급', status: '신규', assignee: '미지정', task: '해외 파트너 임직원 24명 인솔 및 서울 주요 명소 투어 진행', budget: '1인 35만원 / 일', createdAt: '오늘 09:42' },
-  { id: 'TM-1041', company: '하나로투어', manager: '박서준', phone: '010-1138-7742', email: 'sjpark@hanaro.co.kr', event: '일본 바이어 산업 시찰', region: '경기 · 인천', date: '2026. 08. 20 - 08. 22', languages: ['일본어'], guides: 2, urgency: '보통', status: '검토 중', assignee: '이지은', task: '산업단지 방문 통역 및 일정 진행', budget: '협의', createdAt: '어제 16:18' },
-  { id: 'TM-1040', company: 'K-컨벤션', manager: '이수현', phone: '010-5520-8819', email: 'shlee@kconvention.com', event: '2026 아시아 테크 포럼', region: '부산', date: '2026. 09. 02 - 09. 05', languages: ['영어', '중국어'], guides: 5, urgency: '보통', status: '가이드 탐색', assignee: '김도윤', task: '포럼 등록 안내, 세션 이동 및 VIP 수행', budget: '총 720만원', createdAt: '08. 08 11:30' },
-  { id: 'TM-1039', company: '모두여행', manager: '최유진', phone: '010-9941-3012', email: 'yujin@modutravel.kr', event: '베트남 인센티브 투어', region: '제주', date: '2026. 09. 08 - 09. 11', languages: ['베트남어'], guides: 2, urgency: '보통', status: '제안 완료', assignee: '이지은', task: '기업 인센티브 단체 전 일정 동행', budget: '1인 40만원 / 일', createdAt: '08. 07 14:05' },
-  { id: 'TM-1038', company: '브릿지트래블', manager: '정우석', phone: '010-4277-9931', email: 'ws@bridgetravel.io', event: '유럽 대학 교류단 방한', region: '서울 · 대전', date: '2026. 09. 15 - 09. 19', languages: ['영어'], guides: 2, urgency: '보통', status: '매칭 확정', assignee: '김도윤', task: '대학 교류단 의전 및 캠퍼스 투어', budget: '총 420만원', createdAt: '08. 06 10:20' },
-];
+type RequestStatus = AdminRequestStatus;
+type AdminRequest = AdminAgencyRequest;
 
 const statusStyle: Record<RequestStatus, string> = {
   '신규': 'bg-rose-50 text-rose-600 ring-rose-100',
@@ -62,22 +37,6 @@ const statusStyle: Record<RequestStatus, string> = {
   '제안 완료': 'bg-violet-50 text-violet-700 ring-violet-100',
   '매칭 확정': 'bg-emerald-50 text-emerald-700 ring-emerald-100',
 };
-
-function loadLatestRequest(): AdminRequest | null {
-  try {
-    const raw = localStorage.getItem('latestAgencyRequest');
-    if (!raw) return null;
-    const item = JSON.parse(raw) as Record<string, string | string[]>;
-    return {
-      id: typeof item.id === 'string' ? item.id.replace('agency-', 'TM-') : 'TM-NEW',
-      company: String(item.companyName || '신규 여행사'), manager: String(item.contactName || '-'),
-      phone: String(item.contactPhone || '-'), email: String(item.contactEmail || '-'), event: String(item.eventName || '가이드 매칭 요청'),
-      region: String(item.region || '-'), date: `${String(item.startDate || '-')} - ${String(item.endDate || '-')}`, languages: Array.isArray(item.languages) ? item.languages.map(String) : [],
-      guides: Number(item.guideCount || 1), urgency: String(item.urgency).includes('긴급') ? '긴급' : '보통', status: '신규', assignee: '미지정',
-      task: String(item.taskDescription || '상세 업무 미입력'), budget: String(item.budget || '협의'), createdAt: '방금 전',
-    };
-  } catch { return null; }
-}
 
 export function AdminPage() {
   const [activePage, setActivePageState] = useState<AdminSection>(() => {
@@ -94,9 +53,19 @@ export function AdminPage() {
   const [status, setStatus] = useState('전체 상태');
   const [selected, setSelected] = useState<AdminRequest | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const requests = useMemo(() => {
-    const latest = loadLatestRequest();
-    return latest ? [latest, ...seedRequests] : seedRequests;
+  const [requests, setRequests] = useState<AdminRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const loadRequests = () => {
+    setIsLoading(true);
+    setLoadError(false);
+    void getAgencyRequests()
+      .then(setRequests)
+      .catch(() => setLoadError(true))
+      .finally(() => setIsLoading(false));
+  };
+  useEffect(() => {
+    void Promise.resolve().then(loadRequests);
   }, []);
   const filtered = requests.filter((request) => {
     const matchesQuery = `${request.company} ${request.event} ${request.id}`.toLowerCase().includes(query.toLowerCase());
@@ -125,7 +94,7 @@ export function AdminPage() {
           <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Metric label="신규 요청" value={requests.filter((r) => r.status === '신규').length} note="어제보다 2건 증가" tone="rose" icon={ClipboardList} />
             <Metric label="검토 중" value={requests.filter((r) => r.status === '검토 중').length} note="오늘 처리 3건" tone="amber" icon={Clock3} />
-            <Metric label="매칭 진행 중" value={requests.filter((r) => ['가이드 탐색', '제안 완료'].includes(r.status)).length + 6} note="제안 대기 4건" tone="blue" icon={UsersRound} />
+            <Metric label="매칭 진행 중" value={requests.filter((r) => ['가이드 탐색', '제안 완료'].includes(r.status)).length} note="Firestore 기준" tone="blue" icon={UsersRound} />
             <Metric label="이번 달 확정" value={21} note="전월 대비 18% 증가" tone="green" icon={Sparkles} />
           </section>
 
@@ -140,7 +109,7 @@ export function AdminPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wide text-slate-400"><tr><th className="px-5 py-3.5">요청 / 여행사</th><th className="px-4 py-3.5">행사 일정</th><th className="px-4 py-3.5">조건</th><th className="px-4 py-3.5">담당자</th><th className="px-4 py-3.5">상태</th><th className="px-4 py-3.5" /></tr></thead>
-                <tbody className="divide-y divide-slate-100">{filtered.map((request) => <tr className="cursor-pointer transition hover:bg-slate-50/70" key={request.id} onClick={() => setSelected(request)}><td className="px-5 py-4"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-slate-100 font-bold text-slate-500">{request.company.slice(0, 1)}</span><div><div className="flex items-center gap-2"><span className="font-semibold">{request.event}</span>{request.urgency === '긴급' && <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">긴급</span>}</div><p className="mt-1 text-xs text-slate-400">{request.id} · {request.company} · {request.createdAt}</p></div></div></td><td className="px-4 py-4"><p className="font-medium">{request.date}</p><p className="mt-1 text-xs text-slate-400">{request.region}</p></td><td className="px-4 py-4"><div className="flex gap-1">{request.languages.map((language) => <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium" key={language}>{language}</span>)}</div><p className="mt-1.5 text-xs text-slate-400">가이드 {request.guides}명</p></td><td className="px-4 py-4 text-slate-600">{request.assignee}</td><td className="px-4 py-4"><StatusBadge status={request.status} /></td><td className="px-4 py-4"><ChevronRight className="size-4 text-slate-300" /></td></tr>)}</tbody>
+                <tbody className="divide-y divide-slate-100">{isLoading ? <tr><td className="px-5 py-10 text-center text-slate-400" colSpan={6}>매칭 요청을 불러오는 중입니다.</td></tr> : loadError ? <tr><td className="px-5 py-10 text-center text-slate-500" colSpan={6}>매칭 요청을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.<br /><button className="mt-3 font-semibold text-rose-500" onClick={loadRequests}>다시 시도</button></td></tr> : filtered.length === 0 ? <tr><td className="px-5 py-10 text-center text-slate-400" colSpan={6}>아직 접수된 매칭 요청이 없습니다.</td></tr> : filtered.map((request) => <tr className="cursor-pointer transition hover:bg-slate-50/70" key={request.id} onClick={() => setSelected(request)}><td className="px-5 py-4"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-slate-100 font-bold text-slate-500">{request.company.slice(0, 1)}</span><div><div className="flex items-center gap-2"><span className="font-semibold">{request.event}</span>{request.urgency === '긴급' && <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">긴급</span>}</div><p className="mt-1 text-xs text-slate-400">{request.id} · {request.company} · {request.createdAt}</p></div></div></td><td className="px-4 py-4"><p className="font-medium">{request.date}</p><p className="mt-1 text-xs text-slate-400">{request.region}</p></td><td className="px-4 py-4"><div className="flex gap-1">{request.languages.map((language) => <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium" key={language}>{language}</span>)}</div><p className="mt-1.5 text-xs text-slate-400">가이드 {request.guides}명</p></td><td className="px-4 py-4 text-slate-600">{request.assignee}</td><td className="px-4 py-4"><StatusBadge status={request.status} /></td><td className="px-4 py-4"><ChevronRight className="size-4 text-slate-300" /></td></tr>)}</tbody>
               </table>
             </div>
             <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-xs text-slate-400"><span>총 {filtered.length}건</span><button className="font-semibold text-slate-600">전체 요청 보기 →</button></div>
@@ -191,7 +160,7 @@ function StatusBadge({ status }: { status: RequestStatus }) { return <span class
 
 function RequestDrawer({ request, onClose }: { request: AdminRequest; onClose: () => void }) {
   const [status, setStatus] = useState<RequestStatus>(request.status);
-  return <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/30" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><aside className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4"><div><p className="text-xs font-semibold text-rose-500">{request.id}</p><h2 className="mt-1 text-lg font-bold">매칭 요청 상세</h2></div><button className="rounded-xl border border-slate-200 p-2" onClick={onClose}><X className="size-4" /></button></div><div className="space-y-6 p-6"><div className="rounded-2xl bg-slate-900 p-5 text-white"><div className="flex items-start justify-between"><div><p className="text-xs text-slate-400">{request.company}</p><h3 className="mt-1 text-xl font-bold">{request.event}</h3></div>{request.urgency === '긴급' && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold">긴급</span>}</div><div className="mt-5 grid grid-cols-2 gap-4 text-sm"><div><p className="text-xs text-slate-400">행사 일정</p><p className="mt-1">{request.date}</p></div><div><p className="text-xs text-slate-400">진행 지역</p><p className="mt-1">{request.region}</p></div></div></div><section><SectionTitle>처리 상태</SectionTitle><div className="grid grid-cols-2 gap-3"><label className="rounded-xl border border-slate-200 p-3 text-xs text-slate-400">현재 상태<select className="mt-1.5 w-full bg-transparent text-sm font-semibold text-slate-800 outline-none" value={status} onChange={(e) => setStatus(e.target.value as RequestStatus)}>{Object.keys(statusStyle).map((item) => <option key={item}>{item}</option>)}</select></label><label className="rounded-xl border border-slate-200 p-3 text-xs text-slate-400">담당자<select className="mt-1.5 w-full bg-transparent text-sm font-semibold text-slate-800 outline-none" defaultValue={request.assignee}><option>{request.assignee}</option><option>이지은</option><option>김도윤</option></select></label></div></section><section><SectionTitle>여행사 담당자</SectionTitle><div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-full bg-slate-100"><UserRound className="size-5 text-slate-500" /></span><div><p className="font-semibold">{request.manager}</p><p className="text-xs text-slate-400">{request.company}</p></div></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><div className="rounded-lg bg-slate-50 p-3"><p className="text-slate-400">연락처</p><p className="mt-1 font-medium">{request.phone}</p></div><div className="rounded-lg bg-slate-50 p-3"><p className="text-slate-400">이메일</p><p className="mt-1 truncate font-medium">{request.email}</p></div></div></div></section><section><SectionTitle>가이드 조건</SectionTitle><div className="grid grid-cols-3 gap-3"><Info label="필요 언어" value={request.languages.join(', ')} /><Info label="필요 인원" value={`${request.guides}명`} /><Info label="예산" value={request.budget} /></div></section><section><SectionTitle>주요 업무</SectionTitle><p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">{request.task}</p></section><section><SectionTitle>내부 메모</SectionTitle><textarea className="min-h-24 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-rose-300" placeholder="운영팀만 볼 수 있는 메모를 입력하세요." /></section><div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white py-4"><button className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold">정보 보완 요청</button><button className="flex-1 rounded-xl bg-rose-500 px-4 py-3 text-sm font-semibold text-white">변경사항 저장</button></div></div></aside></div>;
+  return <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/30" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><aside className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4"><div><p className="text-xs font-semibold text-rose-500">{request.id}</p><h2 className="mt-1 text-lg font-bold">매칭 요청 상세</h2></div><button className="rounded-xl border border-slate-200 p-2" onClick={onClose}><X className="size-4" /></button></div><div className="space-y-6 p-6"><div className="rounded-2xl bg-slate-900 p-5 text-white"><div className="flex items-start justify-between"><div><p className="text-xs text-slate-400">{request.company}</p><h3 className="mt-1 text-xl font-bold">{request.event}</h3></div>{request.urgency === '긴급' && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold">긴급</span>}</div><div className="mt-5 grid grid-cols-2 gap-4 text-sm"><div><p className="text-xs text-slate-400">행사 일정</p><p className="mt-1">{request.date}</p></div><div><p className="text-xs text-slate-400">진행 지역</p><p className="mt-1">{request.region}</p></div></div></div><section><SectionTitle>처리 상태</SectionTitle><div className="grid grid-cols-2 gap-3"><label className="rounded-xl border border-slate-200 p-3 text-xs text-slate-400">현재 상태<select className="mt-1.5 w-full bg-transparent text-sm font-semibold text-slate-800 outline-none" value={status} onChange={(e) => setStatus(e.target.value as RequestStatus)}>{Object.keys(statusStyle).map((item) => <option key={item}>{item}</option>)}</select></label><label className="rounded-xl border border-slate-200 p-3 text-xs text-slate-400">담당자<select className="mt-1.5 w-full bg-transparent text-sm font-semibold text-slate-800 outline-none" defaultValue={request.assignee}><option>{request.assignee}</option><option>이지은</option><option>김도윤</option></select></label></div><p className="mt-2 text-xs text-slate-400">상태 변경 저장은 다음 단계에서 지원됩니다.</p></section><section><SectionTitle>여행사 담당자</SectionTitle><div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-full bg-slate-100"><UserRound className="size-5 text-slate-500" /></span><div><p className="font-semibold">{request.manager}</p><p className="text-xs text-slate-400">{request.company}</p></div></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><div className="rounded-lg bg-slate-50 p-3"><p className="text-slate-400">연락처</p><p className="mt-1 font-medium">{request.phone}</p></div><div className="rounded-lg bg-slate-50 p-3"><p className="text-slate-400">이메일</p><p className="mt-1 truncate font-medium">{request.email}</p></div></div></div></section><section><SectionTitle>가이드 조건</SectionTitle><div className="grid grid-cols-3 gap-3"><Info label="필요 언어" value={request.languages.join(', ')} /><Info label="필요 인원" value={`${request.guides}명`} /><Info label="예산" value={request.budget} /></div></section><section><SectionTitle>주요 업무</SectionTitle><p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">{request.task}</p></section><section><SectionTitle>내부 메모</SectionTitle><textarea className="min-h-24 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-rose-300" placeholder="운영팀만 볼 수 있는 메모를 입력하세요." /></section><div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white py-4"><button className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" disabled>정보 보완 요청</button><button className="flex-1 rounded-xl bg-slate-300 px-4 py-3 text-sm font-semibold text-white" disabled>저장 준비 중</button></div></div></aside></div>;
 }
 
 function SectionTitle({ children }: { children: string }) { return <h4 className="mb-3 text-sm font-bold">{children}</h4>; }
