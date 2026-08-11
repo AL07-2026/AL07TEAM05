@@ -35,6 +35,9 @@ import GuideRegisterPage from './pages/GuideRegisterPage';
 
 import { AdminPage } from '@/app/AdminPage';
 import { createAgencyRequest } from '@/services/agencyRequests';
+import { getFeaturedGuides } from '@/services/featuredGuides';
+import type { PublicGuideProfile } from '@/types';
+import { FeaturedGuidesSection } from '@/components/FeaturedGuidesSection';
 
 export type AgencyRequest = {
   companyName: string;
@@ -204,7 +207,44 @@ function Layout() {
 }
 
 function HomePage() {
-  return <AgencyPage />;
+  const [guides, setGuides] = useState<readonly PublicGuideProfile[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    void getFeaturedGuides().then((result) => {
+      if (isMounted) {
+        setGuides(result);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  return (
+    <div>
+      <AgencyPage />
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mb-8 space-y-3">
+          <p className="text-sm font-semibold text-coral">가이드 둘러보기</p>
+          <h2 className="text-2xl font-semibold tracking-tight">가이드 후보를 미리 확인해보세요</h2>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+            언어, 지역, 경력 조건에 맞는 가이드를 확인할 수 있어요.
+          </p>
+        </div>
+        <FeaturedGuidesSection guides={guides} />
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          현재는 예시 프로필이며, 실제 가이드는 검증 후 노출됩니다.
+        </p>
+        <div className="mt-8 flex justify-center">
+          <Link className={linkButtonClass} to="/agency/request">
+            조건에 맞는 가이드 요청하기
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function AgencyPage() {
