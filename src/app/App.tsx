@@ -224,15 +224,24 @@ function HomePage() {
   return (
     <div>
       <AgencyPage />
-      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
+      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
         <div className="mb-8 space-y-3">
-          <p className="text-sm font-semibold text-coral">예시 가이드</p>
+          <p className="text-sm font-semibold text-coral">가이드 둘러보기</p>
           <h2 className="text-2xl font-semibold tracking-tight">가이드 후보를 미리 확인해보세요</h2>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            아래 프로필은 나중에 실제 검증된 가이드 DB로 교체될 수 있도록 준비된 예시 데이터입니다.
+            언어, 지역, 경력 조건에 맞는 가이드를 확인할 수 있어요.
           </p>
         </div>
         <FeaturedGuidesSection guides={guides} />
+        <p className="mt-3 text-center text-xs text-muted-foreground">
+          현재는 예시 프로필이며, 실제 가이드는 검증 후 노출됩니다.
+        </p>
+        <div className="mt-8 flex justify-center">
+          <Link className={linkButtonClass} to="/agency/request">
+            조건에 맞는 가이드 요청하기
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
       </section>
     </div>
   );

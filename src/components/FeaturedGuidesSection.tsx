@@ -2,7 +2,7 @@ import type { PublicGuideProfile } from '@/types';
 import { CheckCircle2 } from 'lucide-react';
 
 const cardClass =
-  'rounded-2xl border border-border bg-card p-5 transition hover:border-coral/30 hover:shadow-sm';
+  'flex h-full flex-col rounded-2xl border border-border bg-card p-5 transition hover:border-coral/30 hover:shadow-sm';
 
 function EmptyState() {
   return (
@@ -17,7 +17,7 @@ function GuideAvatar({ photoUrl, name }: { photoUrl?: string; name: string }) {
     return (
       <img
         alt={name}
-        className="size-14 rounded-full object-cover sm:size-16"
+        className="size-10 rounded-full object-cover"
         referrerPolicy="no-referrer"
         src={photoUrl}
       />
@@ -25,9 +25,18 @@ function GuideAvatar({ photoUrl, name }: { photoUrl?: string; name: string }) {
   }
 
   return (
-    <div className="flex size-14 items-center justify-center rounded-full bg-coral-soft text-coral sm:size-16">
-      <span className="text-base font-semibold sm:text-lg">{name.slice(0, 1)}</span>
+    <div className="flex size-10 items-center justify-center rounded-full bg-coral-soft text-coral">
+      <span className="text-sm font-semibold">{name.slice(0, 1)}</span>
     </div>
+  );
+}
+
+function VerifiedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+      <CheckCircle2 className="size-3.5 text-coral" />
+      자격 확인
+    </span>
   );
 }
 
@@ -48,32 +57,22 @@ export function FeaturedGuidesSection({ guides }: { guides: readonly PublicGuide
             </div>
           </div>
 
-          <dl className="mt-4 space-y-2 text-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <dt className="text-xs font-semibold text-muted-foreground">활동 언어</dt>
-              <dd className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium">
-                {guide.languages.join(', ')}
-              </dd>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <dt className="text-xs font-semibold text-muted-foreground">활동 지역</dt>
-              <dd className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium">
-                {guide.regions.join(', ')}
-              </dd>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <dt className="text-xs font-semibold text-muted-foreground">경력</dt>
-              <dd className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium">
-                {guide.experienceRange}
-              </dd>
-            </div>
-          </dl>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium">
+              {guide.languages.join(', ')}
+            </span>
+            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium">
+              {guide.regions.join(', ')}
+            </span>
+            <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium">
+              {guide.experienceRange}
+            </span>
+          </div>
 
-          <p className="mt-3 text-sm leading-6 text-muted-foreground">{guide.introduction}</p>
+          <p className="mt-3 line-clamp-2 text-sm leading-6 text-muted-foreground">{guide.introduction}</p>
 
-          <div className="mt-4 flex items-center gap-1 text-xs font-medium text-coral">
-            <CheckCircle2 className="size-4" />
-            <span>예시 프로필</span>
+          <div className="mt-auto pt-4">
+            <VerifiedBadge />
           </div>
         </article>
       ))}
