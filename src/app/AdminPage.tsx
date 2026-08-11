@@ -8,6 +8,7 @@ import {
   Clock3,
   LayoutDashboard,
   LineChart,
+  LogOut,
   Menu,
   MessageSquareText,
   Search,
@@ -29,6 +30,11 @@ type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agenc
 type RequestStatus = AdminRequestStatus;
 type AdminRequest = AdminAgencyRequest;
 
+type AdminPageProps = {
+  adminDisplayName?: string;
+  onSignOut?: () => void | Promise<void>;
+};
+
 const statusStyle: Record<RequestStatus, string> = {
   '신규': 'bg-rose-50 text-rose-600 ring-rose-100',
   '검토 중': 'bg-amber-50 text-amber-700 ring-amber-100',
@@ -38,7 +44,7 @@ const statusStyle: Record<RequestStatus, string> = {
   '매칭 확정': 'bg-emerald-50 text-emerald-700 ring-emerald-100',
 };
 
-export function AdminPage() {
+export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: AdminPageProps) {
   const [activePage, setActivePageState] = useState<AdminSection>(() => {
     if (/^\/admin\/agencies\/[^/]+$/.test(window.location.pathname)) return 'agency-detail';
     const requested = new URLSearchParams(window.location.search).get('view');
@@ -81,13 +87,14 @@ export function AdminPage() {
           <div className="hidden text-sm text-slate-500 sm:block">운영 현황을 확인하고 매칭 요청을 관리하세요.</div>
           <div className="ml-auto flex items-center gap-2">
             <button className="relative rounded-xl border border-slate-200 p-2.5 text-slate-500"><Bell className="size-4" /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-rose-500" /></button>
-            <div className="ml-1 flex items-center gap-2 rounded-xl px-2 py-1.5"><span className="flex size-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">AD</span><div className="hidden sm:block"><p className="text-xs font-semibold">김관리</p><p className="text-[11px] text-slate-400">운영 관리자</p></div><ChevronDown className="size-3.5 text-slate-400" /></div>
+            <div className="ml-1 flex items-center gap-2 rounded-xl px-2 py-1.5"><span className="flex size-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">AD</span><div className="hidden sm:block"><p className="text-xs font-semibold">{adminDisplayName}</p><p className="text-[11px] text-slate-400">운영 관리자</p></div><ChevronDown className="size-3.5 text-slate-400" /></div>
+            {onSignOut && <button className="flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-500 hover:bg-slate-50" onClick={() => void onSignOut()}><LogOut className="size-3.5" />로그아웃</button>}
           </div>
         </header>
 
         {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'agencies' || activePage === 'guides' ? <AdminPartnersPage mode={activePage} /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, 김관리님</h1><p className="mt-2 text-sm text-slate-500">오늘 확인해야 할 신규 요청이 <b className="text-slate-800">{requests.filter((r) => r.status === '신규').length}건</b> 있습니다.</p></div>
+            <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, {adminDisplayName}님</h1><p className="mt-2 text-sm text-slate-500">오늘 확인해야 할 신규 요청이 <b className="text-slate-800">{requests.filter((r) => r.status === '신규').length}건</b> 있습니다.</p></div>
             <button className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm"><Sparkles className="size-4" />가이드 후보 찾기</button>
           </div>
 
