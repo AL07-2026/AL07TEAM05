@@ -32,8 +32,9 @@ import {
 } from 'react-router';
 
 import { AdminPage } from '@/app/AdminPage';
+import { createAgencyRequest } from '@/services/agencyRequests';
 
-type AgencyRequest = {
+export type AgencyRequest = {
   companyName: string;
   contactName: string;
   contactPhone: string;
@@ -353,10 +354,14 @@ function AgencyRequestPage() {
       return;
     }
 
-    submitRequest();
+    void submitRequest();
   }
 
-  function submitRequest() {
+  async function submitRequest() {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = validateConsent(form);
     setErrors(nextErrors);
 
@@ -373,21 +378,25 @@ function AgencyRequestPage() {
     setIsSubmitting(true);
 
     try {
+      const documentId = await createAgencyRequest({
+        ...form,
+        languages: selectedLanguages,
+      });
       const storedRequest: StoredAgencyRequest = {
         ...form,
         languages: selectedLanguages,
-        id: `agency-${Date.now()}`,
+        id: documentId,
         status: 'submitted',
         createdAt: new Date().toISOString(),
       };
+      // TODO: remove localStorage compatibility after admin Firestore integration
       localStorage.setItem('latestAgencyRequest', JSON.stringify(storedRequest));
       trackAgencyEvent('agency_request_submit_success', {
         id: storedRequest.id,
-        urgency: storedRequest.urgency,
       });
       void navigate('/agency/complete', { state: { request: storedRequest } });
-    } catch (error) {
-      trackAgencyEvent('agency_request_submit_error', { message: String(error) });
+    } catch {
+      trackAgencyEvent('agency_request_submit_error', { message: 'firestore_write_failed' });
       setErrors({ submit: '요청 내용을 임시 저장하지 못했습니다. 입력값을 유지한 상태로 다시 시도해 주세요.' });
       setStep('input');
     } finally {
