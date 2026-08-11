@@ -12,6 +12,7 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -30,6 +31,7 @@ import {
   createBrowserRouter,
   useNavigate,
 } from 'react-router';
+import GuideRegisterPage from './pages/GuideRegisterPage';
 
 import { AdminPage } from '@/app/AdminPage';
 import { createAgencyRequest } from '@/services/agencyRequests';
@@ -174,6 +176,9 @@ function Layout() {
             <Link className="hover:text-ink" to="/agency/request">
               매칭 요청
             </Link>
+            <Link className="hover:text-ink" to="/guide/register">
+              가이드 등록
+            </Link>
             <Link className="hover:text-ink" to="/jobs">
               채용정보
             </Link>
@@ -232,6 +237,10 @@ function AgencyPage() {
               >
                 가이드 매칭 요청하기
                 <ArrowRight className="size-4" />
+              </Link>
+              <Link className={secondaryButtonClass} to="/guide/register">
+                가이드 등록하기
+                <UserPlus className="size-4" />
               </Link>
               <a className={secondaryButtonClass} href="#process">
                 진행 과정 보기
@@ -1033,6 +1042,7 @@ const router = createBrowserRouter([
       { path: 'agency', Component: AgencyPage },
       { path: 'agency/request', Component: AgencyRequestPage },
       { path: 'agency/complete', Component: AgencyCompletePage },
+      { path: 'guide/register', Component: GuideRegisterPage },
       { path: '*', Component: NotFoundPage },
     ],
   },
