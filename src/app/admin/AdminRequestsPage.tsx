@@ -1,35 +1,84 @@
 import { CalendarDays, ChevronRight, Download, Filter, Search, UserRound } from 'lucide-react';
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-type RequestState = '신규' | '검토 중' | '정보 보완' | '가이드 탐색' | '제안 완료' | '매칭 확정';
-type RequestRow = { id: string; company: string; event: string; manager: string; phone: string; date: string; region: string; language: string; guides: number; status: RequestState; assignee: string; priority: '긴급' | '보통'; task: string };
+import {
+  getAgencyRequests,
+  type AdminAgencyRequest,
+  type AdminRequestStatus,
+} from '@/services/agencyRequests';
 
-const requestRows: RequestRow[] = [
-  { id:'TM-1042', company:'트래블메이트', event:'글로벌 파트너 초청 서울 투어', manager:'김민지', phone:'010-2841-9203', date:'08.14 - 08.16', region:'서울', language:'영어', guides:3, status:'신규', assignee:'미지정', priority:'긴급', task:'해외 파트너 24명 인솔 및 서울 주요 명소 투어 진행' },
-  { id:'TM-1041', company:'하나로투어', event:'일본 바이어 산업 시찰', manager:'박서준', phone:'010-1138-7742', date:'08.20 - 08.22', region:'경기 · 인천', language:'일본어', guides:2, status:'검토 중', assignee:'이지은', priority:'보통', task:'산업단지 방문 통역 및 일정 진행' },
-  { id:'TM-1040', company:'K-컨벤션', event:'2026 아시아 테크 포럼', manager:'이수현', phone:'010-5520-8819', date:'09.02 - 09.05', region:'부산', language:'영어 · 중국어', guides:5, status:'가이드 탐색', assignee:'김도윤', priority:'보통', task:'포럼 등록 안내, 세션 이동 및 VIP 수행' },
-  { id:'TM-1039', company:'모두여행', event:'베트남 인센티브 투어', manager:'최유진', phone:'010-9941-3012', date:'09.08 - 09.11', region:'제주', language:'베트남어', guides:2, status:'제안 완료', assignee:'이지은', priority:'보통', task:'기업 인센티브 단체 전 일정 동행' },
-  { id:'TM-1038', company:'브릿지트래블', event:'유럽 대학 교류단 방한', manager:'정우석', phone:'010-4277-9931', date:'09.15 - 09.19', region:'서울 · 대전', language:'영어', guides:2, status:'매칭 확정', assignee:'김도윤', priority:'보통', task:'대학 교류단 의전 및 캠퍼스 투어' },
-  { id:'TM-1037', company:'월드링크', event:'싱가포르 의료진 연수', manager:'한예린', phone:'010-6812-2017', date:'09.21 - 09.23', region:'서울', language:'영어', guides:1, status:'정보 보완', assignee:'이지은', priority:'보통', task:'병원 방문 일정 수행 및 순차 통역' },
-];
+type RequestState = AdminRequestStatus;
+type RequestRow = AdminAgencyRequest & { language: string; priority: '긴급' | '보통' };
 
-const states: RequestState[] = ['신규','검토 중','정보 보완','가이드 탐색','제안 완료','매칭 확정'];
-const stateColors: Record<RequestState,string> = { '신규':'bg-rose-50 text-rose-600','검토 중':'bg-amber-50 text-amber-700','정보 보완':'bg-orange-50 text-orange-700','가이드 탐색':'bg-blue-50 text-blue-700','제안 완료':'bg-violet-50 text-violet-700','매칭 확정':'bg-emerald-50 text-emerald-700' };
+const states: RequestState[] = ['신규', '검토 중', '정보 보완', '가이드 탐색', '제안 완료', '매칭 확정'];
+const stateColors: Record<RequestState, string> = {
+  신규: 'bg-rose-50 text-rose-600',
+  '검토 중': 'bg-amber-50 text-amber-700',
+  '정보 보완': 'bg-orange-50 text-orange-700',
+  '가이드 탐색': 'bg-blue-50 text-blue-700',
+  '제안 완료': 'bg-violet-50 text-violet-700',
+  '매칭 확정': 'bg-emerald-50 text-emerald-700',
+};
+
+function toRequestRow(request: AdminAgencyRequest): RequestRow {
+  return {
+    ...request,
+    language: request.languages.join(' · ') || '-',
+    priority: request.urgency,
+  };
+}
 
 export function AdminRequestsPage() {
-  const [query,setQuery] = useState(''); const [state,setState] = useState('전체'); const [selected,setSelected] = useState<RequestRow>(requestRows[0]!);
-  const rows = useMemo(() => requestRows.filter(r => (`${r.id} ${r.company} ${r.event}`).toLowerCase().includes(query.toLowerCase()) && (state === '전체' || r.status === state)),[query,state]);
+  const [query, setQuery] = useState('');
+  const [state, setState] = useState('전체');
+  const [requests, setRequests] = useState<RequestRow[]>([]);
+  const [selected, setSelected] = useState<RequestRow | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadRequests = () => {
+    setIsLoading(true);
+    setLoadError(false);
+    void getAgencyRequests()
+      .then((items) => setRequests(items.map(toRequestRow)))
+      .catch(() => setLoadError(true))
+      .finally(() => setIsLoading(false));
+  };
+
+  useEffect(() => {
+    void Promise.resolve().then(loadRequests);
+  }, []);
+
+  const rows = useMemo(
+    () =>
+      requests.filter(
+        (request) =>
+          `${request.id} ${request.company} ${request.event}`.toLowerCase().includes(query.toLowerCase()) &&
+          (state === '전체' || request.status === state),
+      ),
+    [query, requests, state],
+  );
+
+  const activeSelected = rows.find((row) => row.id === selected?.id) ?? rows[0] ?? null;
+
   return <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
-    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold text-rose-500">REQUESTS</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">매칭 요청 관리</h1><p className="mt-2 text-sm text-slate-500">접수된 요청을 검토하고 담당자와 진행 상태를 관리하세요.</p></div><button className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold"><Download className="size-4"/>CSV 다운로드</button></div>
+    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div><p className="text-sm font-semibold text-rose-500">REQUESTS</p><h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">매칭 요청 관리</h1><p className="mt-2 text-sm text-slate-500">접수된 요청을 검토하고 담당자와 진행 상태를 관리하세요.</p></div><button className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold"><Download className="size-4" />CSV 다운로드</button></div>
     <div className="mt-7 grid min-h-[680px] overflow-hidden rounded-2xl border border-slate-200 bg-white xl:grid-cols-[1.45fr_.85fr]">
-      <section className="min-w-0 border-r border-slate-100"><div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row"><label className="flex h-10 flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3"><Search className="size-4 text-slate-400"/><input className="w-full bg-transparent text-sm outline-none" placeholder="요청번호, 여행사, 행사명 검색" value={query} onChange={e=>setQuery(e.target.value)}/></label><label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm"><Filter className="size-4 text-slate-400"/><select className="bg-transparent outline-none" value={state} onChange={e=>setState(e.target.value)}><option>전체</option>{states.map(s=><option key={s}>{s}</option>)}</select></label></div>
-        <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400"><tr><th className="px-4 py-3">요청 정보</th><th className="px-3 py-3">일정</th><th className="px-3 py-3">조건</th><th className="px-3 py-3">상태</th><th/></tr></thead><tbody className="divide-y divide-slate-100">{rows.map(row=><tr onClick={()=>setSelected(row)} className={`cursor-pointer hover:bg-slate-50 ${selected.id===row.id?'bg-rose-50/40':''}`} key={row.id}><td className="px-4 py-4"><div className="flex items-center gap-2"><b>{row.event}</b>{row.priority==='긴급'&&<span className="rounded bg-rose-100 px-1.5 py-.5 text-[10px] font-bold text-rose-600">긴급</span>}</div><p className="mt-1 text-xs text-slate-400">{row.id} · {row.company}</p></td><td className="px-3 py-4"><p>{row.date}</p><p className="mt-1 text-xs text-slate-400">{row.region}</p></td><td className="px-3 py-4"><p>{row.language}</p><p className="mt-1 text-xs text-slate-400">{row.guides}명</p></td><td className="px-3 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${stateColors[row.status]}`}>{row.status}</span></td><td className="pr-3"><ChevronRight className="size-4 text-slate-300"/></td></tr>)}</tbody></table></div><div className="border-t border-slate-100 p-4 text-xs text-slate-400">검색 결과 {rows.length}건</div>
+      <section className="min-w-0 border-r border-slate-100"><div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row"><label className="flex h-10 flex-1 items-center gap-2 rounded-xl border border-slate-200 px-3"><Search className="size-4 text-slate-400" /><input className="w-full bg-transparent text-sm outline-none" placeholder="요청번호, 여행사, 행사명 검색" value={query} onChange={(event) => setQuery(event.target.value)} /></label><label className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 px-3 text-sm"><Filter className="size-4 text-slate-400" /><select className="bg-transparent outline-none" value={state} onChange={(event) => setState(event.target.value)}><option>전체</option>{states.map((item) => <option key={item}>{item}</option>)}</select></label></div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-400"><tr><th className="px-4 py-3">요청 정보</th><th className="px-3 py-3">일정</th><th className="px-3 py-3">조건</th><th className="px-3 py-3">상태</th><th /></tr></thead><tbody className="divide-y divide-slate-100">{isLoading ? <tr><td className="px-4 py-10 text-center text-slate-400" colSpan={5}>매칭 요청을 불러오는 중입니다.</td></tr> : loadError ? <tr><td className="px-4 py-10 text-center text-slate-500" colSpan={5}>매칭 요청을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.<br /><button className="mt-3 font-semibold text-rose-500" onClick={loadRequests}>다시 시도</button></td></tr> : rows.length === 0 ? <tr><td className="px-4 py-10 text-center text-slate-400" colSpan={5}>아직 접수된 매칭 요청이 없습니다.</td></tr> : rows.map((row) => <tr onClick={() => setSelected(row)} className={`cursor-pointer hover:bg-slate-50 ${selected?.id === row.id ? 'bg-rose-50/40' : ''}`} key={row.id}><td className="px-4 py-4"><div className="flex items-center gap-2"><b>{row.event}</b>{row.priority === '긴급' && <span className="rounded bg-rose-100 px-1.5 py-.5 text-[10px] font-bold text-rose-600">긴급</span>}</div><p className="mt-1 text-xs text-slate-400">{row.id} · {row.company}</p></td><td className="px-3 py-4"><p>{row.date}</p><p className="mt-1 text-xs text-slate-400">{row.region}</p></td><td className="px-3 py-4"><p>{row.language}</p><p className="mt-1 text-xs text-slate-400">{row.guides}명</p></td><td className="px-3 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${stateColors[row.status]}`}>{row.status}</span></td><td className="pr-3"><ChevronRight className="size-4 text-slate-300" /></td></tr>)}</tbody></table></div><div className="border-t border-slate-100 p-4 text-xs text-slate-400">검색 결과 {rows.length}건</div>
       </section>
-      <RequestDetail request={selected}/>
+      <RequestDetail request={activeSelected} />
     </div>
   </main>;
 }
 
-function RequestDetail({request}:{request:RequestRow}) { const [status,setStatus]=useState<RequestState>(request.status); return <aside className="bg-slate-50/40 p-5 xl:p-6" key={request.id}><div className="flex items-start justify-between"><div><p className="text-xs font-bold text-rose-500">{request.id}</p><h2 className="mt-1 text-xl font-bold">{request.event}</h2><p className="mt-1 text-sm text-slate-400">{request.company}</p></div>{request.priority==='긴급'&&<span className="rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">긴급</span>}</div><div className="mt-6 grid grid-cols-2 gap-3"><DetailBox label="행사 일정" value={request.date} icon={<CalendarDays className="size-4"/>}/><DetailBox label="필요 가이드" value={`${request.language} · ${request.guides}명`} icon={<UserRound className="size-4"/>}/></div><div className="mt-6"><Label>진행 상태</Label><select className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none" value={status} onChange={e=>setStatus(e.target.value as RequestState)}>{states.map(s=><option key={s}>{s}</option>)}</select></div><div className="mt-5"><Label>내부 담당자</Label><select className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none" defaultValue={request.assignee}><option>{request.assignee}</option><option>이지은</option><option>김도윤</option><option>박하늘</option></select></div><div className="mt-5"><Label>여행사 담당자</Label><div className="mt-2 rounded-xl border border-slate-200 bg-white p-4"><b className="text-sm">{request.manager}</b><p className="mt-1 text-xs text-slate-400">{request.phone}</p></div></div><div className="mt-5"><Label>주요 업무</Label><p className="mt-2 rounded-xl bg-white p-4 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">{request.task}</p></div><div className="mt-5"><Label>내부 메모</Label><textarea className="mt-2 min-h-24 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none" placeholder="운영팀 메모를 입력하세요."/></div><div className="mt-5 grid grid-cols-2 gap-2"><button className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold">정보 보완 요청</button><button className="rounded-xl bg-rose-500 py-3 text-sm font-semibold text-white">저장하기</button></div></aside> }
-function DetailBox({label,value,icon}:{label:string;value:string;icon:ReactNode}) { return <div className="rounded-xl border border-slate-200 bg-white p-3"><span className="flex items-center gap-1.5 text-[11px] text-slate-400">{icon}{label}</span><p className="mt-2 text-sm font-semibold">{value}</p></div> }
-function Label({children}:{children:string}) { return <p className="text-xs font-bold text-slate-500">{children}</p> }
+function RequestDetail({ request }: { request: RequestRow | null }) {
+  if (!request) {
+    return <aside className="bg-slate-50/40 p-5 text-sm text-slate-400 xl:p-6">선택할 매칭 요청이 없습니다.</aside>;
+  }
+
+  return <aside className="bg-slate-50/40 p-5 xl:p-6" key={request.id}><div className="flex items-start justify-between"><div><p className="text-xs font-bold text-rose-500">{request.id}</p><h2 className="mt-1 text-xl font-bold">{request.event}</h2><p className="mt-1 text-sm text-slate-400">{request.company}</p></div>{request.priority === '긴급' && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold text-white">긴급</span>}</div><div className="mt-6 grid grid-cols-2 gap-3"><DetailBox label="행사 일정" value={request.date} icon={<CalendarDays className="size-4" />} /><DetailBox label="필요 가이드" value={`${request.language} · ${request.guides}명`} icon={<UserRound className="size-4" />} /></div><div className="mt-6"><Label>진행 상태</Label><select className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold outline-none" value={request.status} disabled>{states.map((item) => <option key={item}>{item}</option>)}</select><p className="mt-2 text-xs text-slate-400">상태 변경 저장은 다음 단계에서 지원됩니다.</p></div><div className="mt-5"><Label>내부 담당자</Label><select className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none" defaultValue={request.assignee} disabled><option>{request.assignee}</option><option>이지은</option><option>김도윤</option><option>박하늘</option></select></div><div className="mt-5"><Label>여행사 담당자</Label><div className="mt-2 rounded-xl border border-slate-200 bg-white p-4"><b className="text-sm">{request.manager}</b><p className="mt-1 text-xs text-slate-400">{request.phone}</p></div></div><div className="mt-5"><Label>주요 업무</Label><p className="mt-2 rounded-xl bg-white p-4 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">{request.task}</p></div><div className="mt-5"><Label>내부 메모</Label><textarea className="mt-2 min-h-24 w-full resize-none rounded-xl border border-slate-200 bg-white p-3 text-sm outline-none" placeholder="운영팀 메모를 입력하세요." disabled /></div><div className="mt-5 grid grid-cols-2 gap-2"><button className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold" disabled>정보 보완 요청</button><button className="rounded-xl bg-slate-300 py-3 text-sm font-semibold text-white" disabled>저장 준비 중</button></div></aside>;
+}
+
+function DetailBox({ label, value, icon }: { label: string; value: string; icon: ReactNode }) { return <div className="rounded-xl border border-slate-200 bg-white p-3"><span className="flex items-center gap-1.5 text-[11px] text-slate-400">{icon}{label}</span><p className="mt-2 text-sm font-semibold">{value}</p></div>; }
+function Label({ children }: { children: string }) { return <p className="text-xs font-bold text-slate-500">{children}</p>; }

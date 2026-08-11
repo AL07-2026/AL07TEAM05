@@ -429,8 +429,6 @@ function AgencyRequestPage() {
         status: 'submitted',
         createdAt: new Date().toISOString(),
       };
-      // TODO: remove localStorage compatibility after admin Firestore integration
-      localStorage.setItem('latestAgencyRequest', JSON.stringify(storedRequest));
       trackAgencyEvent('agency_request_submit_success', {
         id: storedRequest.id,
       });
