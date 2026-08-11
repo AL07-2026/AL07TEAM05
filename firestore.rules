@@ -36,6 +36,36 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /agencyRequests/{requestId} {
+      allow create: if request.auth == null
+                    && request.resource.data.keys().hasAll([
+                      'companyName', 'contactName', 'contactPhone', 'contactEmail',
+                      'preferredContactMethod', 'companyDescription',
+                      'eventName', 'eventType', 'region', 'startDate', 'endDate',
+                      'participantCount', 'guideCount', 'languages', 'customLanguage',
+                      'taskDescription', 'certificatePriority', 'sourcingExperience',
+                      'urgency', 'preferredExperience', 'similarEventExperience',
+                      'drivingRequired', 'budget', 'additionalNotes',
+                      'privacyConsent', 'contactConsent',
+                      'status', 'assignee', 'createdAt'
+                    ])
+                    && request.resource.data.keys().hasOnly([
+                      'companyName', 'contactName', 'contactPhone', 'contactEmail',
+                      'preferredContactMethod', 'companyDescription',
+                      'eventName', 'eventType', 'region', 'startDate', 'endDate',
+                      'participantCount', 'guideCount', 'languages', 'customLanguage',
+                      'taskDescription', 'certificatePriority', 'sourcingExperience',
+                      'urgency', 'preferredExperience', 'similarEventExperience',
+                      'drivingRequired', 'budget', 'additionalNotes',
+                      'privacyConsent', 'contactConsent',
+                      'status', 'assignee', 'createdAt'
+                    ])
+                    && request.resource.data.status == 'submitted'
+                    && request.resource.data.assignee == null
+                    && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
