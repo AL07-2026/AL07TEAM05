@@ -1,7 +1,6 @@
 import {
   Bell,
   Building2,
-  CalendarDays,
   ChevronDown,
   ChevronRight,
   CircleHelp,
@@ -73,7 +72,7 @@ function loadLatestRequest(): AdminRequest | null {
       id: typeof item.id === 'string' ? item.id.replace('agency-', 'TM-') : 'TM-NEW',
       company: String(item.companyName || '신규 여행사'), manager: String(item.contactName || '-'),
       phone: String(item.contactPhone || '-'), email: String(item.contactEmail || '-'), event: String(item.eventName || '가이드 매칭 요청'),
-      region: String(item.region || '-'), date: `${item.startDate || '-'} - ${item.endDate || '-'}`, languages: Array.isArray(item.languages) ? item.languages.map(String) : [],
+      region: String(item.region || '-'), date: `${String(item.startDate || '-')} - ${String(item.endDate || '-')}`, languages: Array.isArray(item.languages) ? item.languages.map(String) : [],
       guides: Number(item.guideCount || 1), urgency: String(item.urgency).includes('긴급') ? '긴급' : '보통', status: '신규', assignee: '미지정',
       task: String(item.taskDescription || '상세 업무 미입력'), budget: String(item.budget || '협의'), createdAt: '방금 전',
     };
