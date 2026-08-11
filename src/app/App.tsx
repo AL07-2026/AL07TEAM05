@@ -34,8 +34,9 @@ import {
 import GuideRegisterPage from './pages/GuideRegisterPage';
 
 import { AdminPage } from '@/app/AdminPage';
+import { createAgencyRequest } from '@/services/agencyRequests';
 
-type AgencyRequest = {
+export type AgencyRequest = {
   companyName: string;
   contactName: string;
   contactPhone: string;
@@ -191,7 +192,7 @@ function Layout() {
         <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© 2026 TourMatch. 여행사와 가이드의 더 좋은 연결을 만듭니다.</p>
           <Link
-            className="w-fit font-medium transition-colors hover:text-ink"
+            className="w-fit font-semibold text-slate-700 underline decoration-slate-400 underline-offset-4 transition-colors hover:text-ink"
             to="/admin"
           >
             관리자 페이지
@@ -362,10 +363,14 @@ function AgencyRequestPage() {
       return;
     }
 
-    submitRequest();
+    void submitRequest();
   }
 
-  function submitRequest() {
+  async function submitRequest() {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = validateConsent(form);
     setErrors(nextErrors);
 
@@ -382,21 +387,25 @@ function AgencyRequestPage() {
     setIsSubmitting(true);
 
     try {
+      const documentId = await createAgencyRequest({
+        ...form,
+        languages: selectedLanguages,
+      });
       const storedRequest: StoredAgencyRequest = {
         ...form,
         languages: selectedLanguages,
-        id: `agency-${Date.now()}`,
+        id: documentId,
         status: 'submitted',
         createdAt: new Date().toISOString(),
       };
+      // TODO: remove localStorage compatibility after admin Firestore integration
       localStorage.setItem('latestAgencyRequest', JSON.stringify(storedRequest));
       trackAgencyEvent('agency_request_submit_success', {
         id: storedRequest.id,
-        urgency: storedRequest.urgency,
       });
       void navigate('/agency/complete', { state: { request: storedRequest } });
-    } catch (error) {
-      trackAgencyEvent('agency_request_submit_error', { message: String(error) });
+    } catch {
+      trackAgencyEvent('agency_request_submit_error', { message: 'firestore_write_failed' });
       setErrors({ submit: '요청 내용을 임시 저장하지 못했습니다. 입력값을 유지한 상태로 다시 시도해 주세요.' });
       setStep('input');
     } finally {
