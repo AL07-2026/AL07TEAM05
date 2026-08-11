@@ -33,7 +33,7 @@ import {
 } from 'react-router';
 import GuideRegisterPage from './pages/GuideRegisterPage';
 
-import { AdminPage } from '@/app/AdminPage';
+import { AdminAuthGate } from '@/app/admin/AdminAuthGate';
 import { createAgencyRequest } from '@/services/agencyRequests';
 import { getFeaturedGuides } from '@/services/featuredGuides';
 import type { PublicGuideProfile } from '@/types';
@@ -1071,7 +1071,7 @@ function NotFoundPage() {
 }
 
 const router = createBrowserRouter([
-  { path: '/admin/*', Component: AdminPage },
+  { path: '/admin/*', Component: AdminAuthGate },
   {
     path: '/',
     Component: Layout,
