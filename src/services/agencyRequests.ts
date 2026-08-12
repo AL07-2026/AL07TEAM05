@@ -51,6 +51,8 @@ export type AdminAgencyRequest = {
   drivingRequired: string;
   additionalNotes: string;
   createdAt: string;
+  preferredGuideId?: string;
+  preferredGuideName?: string;
 };
 
 function withoutUndefined(data: Record<string, unknown>) {
@@ -168,6 +170,8 @@ function toAdminAgencyRequest(id: string, data: Record<string, unknown>): AdminA
     drivingRequired: readString(data, 'drivingRequired'),
     additionalNotes: readString(data, 'additionalNotes'),
     createdAt: formatCreatedAt(data.createdAt),
+    preferredGuideId: readString(data, 'preferredGuideId', '').trim() || undefined,
+    preferredGuideName: readString(data, 'preferredGuideName', '').trim() || undefined,
   };
 }
 

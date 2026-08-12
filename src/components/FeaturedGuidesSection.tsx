@@ -1,4 +1,5 @@
 import { Award, CheckCircle2, MapPin } from 'lucide-react';
+import { Link } from 'react-router';
 
 import type { PublicGuideProfile } from '@/types';
 
@@ -64,6 +65,13 @@ export function FeaturedGuidesSection({ guides }: { guides: readonly PublicGuide
               추천 사유는 운영 검토 후 안내
             </span>
           </div>
+          <Link
+            className="mt-5 w-full rounded-xl border border-border py-2.5 text-center text-sm font-semibold transition hover:border-coral/40 hover:text-coral"
+            to="/agency/request"
+            state={{ preferredGuideId: guide.id, preferredGuideName: guide.name }}
+          >
+            이 가이드로 매칭 요청
+          </Link>
         </article>
       ))}
     </div>

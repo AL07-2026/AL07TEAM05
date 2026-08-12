@@ -184,6 +184,9 @@ function RequestDetail({ request }: { request: RequestRow | null }) {
     <div className="mt-5 grid gap-3">
       <DetailBox label="진행 상태" value={request.status} icon={<ChevronRight className="size-4" />} />
       <DetailBox label="내부 담당자" value={emptyValueFallback(request.assignee)} icon={<UserRound className="size-4" />} />
+      {(request.preferredGuideId || request.preferredGuideName) && (
+        <DetailBox label="선택 가이드" value={emptyValueFallback(request.preferredGuideName)} icon={<UserRound className="size-4" />} />
+      )}
     </div>
     <p className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-200">현재 화면은 조회 전용입니다. 상태 저장과 담당자 배정은 다음 단계에서 지원됩니다.</p>
     <div className="mt-5">
