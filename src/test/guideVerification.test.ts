@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildPublicProfile } from '@/services/guideVerification';
+import { buildPublicProfile, evaluatePreCheck } from '@/services/guideVerificationCore';
 import type { GuideVerificationReview } from '@/types';
 
 const approvedReview: GuideVerificationReview = {
@@ -92,5 +92,77 @@ describe('buildPublicProfile', () => {
     expect(publicProfile.introduction).toBe('');
     expect(publicProfile.profilePhotoUrl).toBeUndefined();
     expect(publicProfile.verified).toBe(true);
+  });
+});
+
+describe('evaluatePreCheck', () => {
+  it('returns blocked when profile or registration is missing', () => {
+    expect(evaluatePreCheck(null, null)).toEqual({
+      status: 'blocked',
+      flags: ['MISSING_REGISTRATION'],
+    });
+  });
+
+  it('flags missing required fields', () => {
+    const profile = {
+      ownerUid: 'uid-1',
+      name: '',
+      languages: [],
+      regions: [],
+      experienceRange: '',
+    };
+
+    const result = evaluatePreCheck(profile, {
+      ownerUid: 'uid-1',
+      phone: '',
+      certificateLanguage: '',
+      certificateNumber: '',
+      privacyConsent: false,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.flags).toContain('MISSING_REQUIRED_FIELD');
+  });
+
+  it('flags owner uid mismatch', () => {
+    const profile = {
+      ownerUid: 'uid-1',
+      name: '김가이드',
+      languages: ['영어'],
+      regions: ['서울'],
+      experienceRange: '1년',
+    };
+
+    const result = evaluatePreCheck(profile, {
+      ownerUid: 'uid-other',
+      phone: '010-0000-0000',
+      certificateLanguage: '영어',
+      certificateNumber: 'CERT-1',
+      privacyConsent: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.flags).toContain('OWNER_UID_MISMATCH');
+  });
+
+  it('returns ready when all checks pass', () => {
+    const profile = {
+      ownerUid: 'uid-1',
+      name: '김가이드',
+      languages: ['영어'],
+      regions: ['서울'],
+      experienceRange: '1년',
+    };
+
+    const result = evaluatePreCheck(profile, {
+      ownerUid: 'uid-1',
+      phone: '010-0000-0000',
+      certificateLanguage: '영어',
+      certificateNumber: 'CERT-1',
+      privacyConsent: true,
+    });
+
+    expect(result.status).toBe('ready');
+    expect(result.flags).toEqual([]);
   });
 });
