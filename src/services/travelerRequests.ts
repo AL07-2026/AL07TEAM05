@@ -58,12 +58,18 @@ export async function createTravelerRequest(request: TravelerRequest) {
   return document.id;
 }
 
-export function listenTravelerRequests(ownerUid: string, onUpdate: (requests: TravelerRequest[]) => void) {
-  const q = query(collection(db, travelerRequestsCollection), where('ownerUid', '==', ownerUid), orderBy('createdAt', 'desc'), limit(50));
-  return onSnapshot(q, (snapshot) => {
-    const requests = snapshot.docs.map((doc) => mapTravelerRequest(doc.id, doc.data() as Record<string, unknown>));
-    onUpdate(requests);
-  });
+export function listenTravelerRequests(ownerUid: string, onUpdate: (requests: TravelerRequest[]) => void, onError?: (error: Error) => void) {
+  const q = query(collection(db, travelerRequestsCollection), where('ownerUid', '==', ownerUid), limit(50));
+  return onSnapshot(
+    q,
+    (snapshot) => {
+      const requests = snapshot.docs.map((doc) => mapTravelerRequest(doc.id, doc.data() as Record<string, unknown>));
+      onUpdate(requests.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')));
+    },
+    (error) => {
+      if (onError) onError(error);
+    },
+  );
 }
 
 export function mapTravelerRequestStatus(status: unknown): string {

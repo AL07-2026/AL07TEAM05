@@ -3,7 +3,7 @@ import { ArrowLeft, Loader2, MapPin, MessageSquareText, Search, UserRound } from
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { getPublicGuideProfiles } from '@/services/publicGuideProfiles';
-import { createTravelerRequest, getTravelerRequest, listenTravelerRequests } from '@/services/travelerRequests';
+import { createTravelerRequest, getTravelerRequest, listenTravelerRequests, mapTravelerRequestStatus } from '@/services/travelerRequests';
 import { signInTraveler, signUpTraveler, useTravelerUser } from '@/services/travelerAuth';
 import type { PublicGuideProfile, TravelerRequest } from '@/types';
 
@@ -479,14 +479,34 @@ export function TravelerMyRequestsPage() {
   const { profile, loading: profileLoading } = useTravelerUser();
   const [requests, setRequests] = useState<TravelerRequest[]>([]);
   const [selected, setSelected] = useState<TravelerRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!profile?.ownerUid) return;
-    const unsubscribe = listenTravelerRequests(profile.ownerUid, (items) => {
-      setRequests(items);
-    });
-    return () => unsubscribe();
-  }, [profile?.ownerUid]);
+    let ignore = false;
+    const unsubscribe = listenTravelerRequests(
+      profile.ownerUid,
+      (items) => {
+        if (!ignore) {
+          setRequests(items);
+          setIsLoading(false);
+        }
+      },
+      () => {
+        if (!ignore) {
+          setRequests([]);
+          setIsLoading(false);
+          setLoadError('요청을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+      },
+    );
+    return () => {
+      ignore = true;
+      unsubscribe();
+    };
+  }, [profile?.ownerUid, retryKey]);
 
   if (profileLoading) {
     return (
@@ -511,7 +531,20 @@ export function TravelerMyRequestsPage() {
       <Shell eyebrow="개인 여행자" title="내 매칭 요청" description="접수한 요청의 상태와 진행 상황을 확인하세요.">
         <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
           <section className="space-y-4">
-            {requests.length === 0 ? (
+            {loadError ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-700">
+                <p className="font-semibold">{loadError}</p>
+                <button
+                  className="mt-3 rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-700"
+                  onClick={() => setRetryKey((prev) => prev + 1)}
+                  type="button"
+                >
+                  다시 시도
+                </button>
+              </div>
+            ) : isLoading ? (
+              <EmptyState title="불러오는 중" body="요청 목록을 불러오고 있습니다." />
+            ) : requests.length === 0 ? (
               <EmptyState title="접수된 요청이 없습니다." body="새 매칭 요청을 작성해 보세요." />
             ) : (
               requests.map((request) => (
@@ -526,7 +559,7 @@ export function TravelerMyRequestsPage() {
                       <p className="text-sm font-bold">{request.region}</p>
                       <p className="text-xs text-muted-foreground">{request.startDate} - {request.endDate}</p>
                     </div>
-                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-slate-600">{request.status}</span>
+                    <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-slate-600">{mapTravelerRequestStatus(request.status)}</span>
                   </div>
                   <p className="mt-2 text-xs text-slate-500">{request.requestDetails}</p>
                 </button>
@@ -560,8 +593,9 @@ export function TravelerMyRequestsPage() {
                 )}
                 <div>
                   <p className="text-xs text-slate-400">상태</p>
-                  <p className="text-sm font-semibold">{selected.status}</p>
+                  <p className="text-sm font-semibold">{mapTravelerRequestStatus(selected.status)}</p>
                 </div>
+                <p className="rounded-xl bg-white p-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-200">상태와 담당자만 변경할 수 있습니다.</p>
               </div>
             ) : (
               <p className="text-sm text-slate-500">왼쪽 요청을 선택하면 상세 정보를 확인할 수 있습니다.</p>
