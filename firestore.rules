@@ -22,28 +22,66 @@ service cloud.firestore {
     }
 
     match /guideProfiles/{uid} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow read: if request.auth != null && request.auth.uid == uid
+                  || isAdmin();
       allow create: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.profileStatus == "pending"
                     && request.resource.data.keys().hasAll(["createdAt", "updatedAt"]);
+      allow update: if isAdmin()
+                    && request.resource.data.keys().hasOnly([
+                      "profileStatus",
+                      "updatedAt"
+                    ]);
       allow update: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.ownerUid == resource.data.ownerUid
                     && request.resource.data.createdAt == resource.data.createdAt
-                    && request.resource.data.profileStatus == resource.data.profileStatus;
+                    && request.resource.data.profileStatus == resource.data.profileStatus
+                    && request.resource.data.keys().hasOnly([
+                      "ownerUid", "name", "languages", "regions",
+                      "experienceRange", "introduction", "profilePhotoUrl",
+                      "profileStatus", "createdAt", "updatedAt"
+                    ]);
       allow delete: if false;
     }
 
     match /guideRegistrations/{uid} {
-      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow read: if request.auth != null && request.auth.uid == uid
+                  || isAdmin();
       allow create: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.ownerUid == request.auth.uid
                     && request.resource.data.verificationStatus == "pending";
+      allow update: if isAdmin()
+                    && request.resource.data.keys().hasOnly([
+                      "verificationStatus",
+                      "updatedAt"
+                    ]);
       allow update: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.ownerUid == resource.data.ownerUid
                     && request.resource.data.submittedAt == resource.data.submittedAt
-                    && request.resource.data.verificationStatus == resource.data.verificationStatus;
+                    && request.resource.data.verificationStatus == resource.data.verificationStatus
+                    && request.resource.data.keys().hasOnly([
+                      "ownerUid", "phone", "certificateLanguage", "certificateNumber",
+                      "certificateFilePath", "resumeFilePath", "privacyConsent",
+                      "verificationStatus", "submittedAt", "updatedAt"
+                    ]);
       allow delete: if false;
+    }
+
+    match /guideVerificationReviews/{uid} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /guideVerificationLogs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /publicGuideProfiles/{uid} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
     }
 
     match /guideMarketReferences/{document=**} {

@@ -1,34 +1,50 @@
-import { ArrowLeft, Building2, Mail, MapPin, MessageSquareText, Phone, Plus, UserRound } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { ArrowLeft, Building2, Mail, MessageSquareText, Phone, Plus, UserRound } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { agencyPathId, getAgencyRequests, type AdminAgencyRequest } from '@/services/agencyRequests';
 
-const agencyDetails = {
-  'travelmate': { name:'트래블메이트', manager:'김민지', role:'기업행사팀 팀장', phone:'02-6204-1187', mobile:'010-2841-9203', email:'minji@travelmate.kr', address:'서울특별시 중구 세종대로 110', website:'www.travelmate.kr', grade:'핵심 파트너', description:'기업 인센티브 투어와 해외 VIP 방한 행사를 전문으로 운영하는 여행사입니다.', requests:8, active:2, confirmed:5, joined:'2026. 03. 18', note:'영어권 기업 인센티브 및 VIP 투어 요청이 많음. 연락은 이메일보다 전화를 선호함.' },
-  'hanaro': { name:'하나로투어', manager:'박서준', role:'인바운드팀 매니저', phone:'02-771-4201', mobile:'010-1138-7742', email:'sjpark@hanaro.co.kr', address:'서울특별시 종로구 종로 51', website:'www.hanarotour.co.kr', grade:'일반', description:'일본 기업 연수와 산업 시찰 프로그램을 중심으로 운영합니다.', requests:12, active:1, confirmed:9, joined:'2025. 11. 02', note:'일본어 산업·비즈니스 전문 가이드 선호.' },
-  'k-convention': { name:'K-컨벤션', manager:'이수현', role:'행사운영실 과장', phone:'051-903-7740', mobile:'010-5520-8819', email:'shlee@kconvention.com', address:'부산광역시 해운대구 APEC로 55', website:'www.kconvention.com', grade:'핵심 파트너', description:'부산 지역 국제회의 및 컨벤션 운영 전문 기업입니다.', requests:5, active:3, confirmed:2, joined:'2026. 05. 09', note:'MICE 경력과 VIP 의전 경험을 중요하게 확인.' },
-  'modu': { name:'모두여행', manager:'최유진', role:'글로벌사업팀 대리', phone:'02-3401-9912', mobile:'010-9941-3012', email:'yujin@modutravel.kr', address:'서울특별시 마포구 월드컵북로 21', website:'www.modutravel.kr', grade:'핵심 파트너', description:'동남아 단체 관광과 기업 인센티브 투어를 운영합니다.', requests:17, active:2, confirmed:13, joined:'2025. 08. 21', note:'베트남어, 태국어 가이드 요청 빈도가 높음.' },
-  'bridge': { name:'브릿지트래블', manager:'정우석', role:'교육여행팀 팀장', phone:'02-557-2103', mobile:'010-4277-9931', email:'ws@bridgetravel.io', address:'서울특별시 강남구 테헤란로 142', website:'www.bridgetravel.io', grade:'일반', description:'해외 대학 교류와 교육 연수 프로그램 전문 여행사입니다.', requests:4, active:1, confirmed:3, joined:'2026. 01. 15', note:'대학 및 교육기관 방문 경험을 우선 확인.' },
-} as const;
-
-type AgencyKey = keyof typeof agencyDetails;
-const histories = [
-  { id:'TM-1042', event:'글로벌 파트너 초청 서울 투어', date:'2026. 08. 14 - 08. 16', language:'영어', guides:'3명', status:'신규' },
-  { id:'TM-1018', event:'미국 본사 임원 VIP 방한', date:'2026. 07. 02 - 07. 04', language:'영어', guides:'2명', status:'매칭 확정' },
-  { id:'TM-0987', event:'싱가포르 파트너 인센티브 투어', date:'2026. 05. 21 - 05. 24', language:'영어 · 중국어', guides:'3명', status:'종료' },
-  { id:'TM-0941', event:'글로벌 세일즈 워크숍', date:'2026. 04. 10 - 04. 12', language:'영어', guides:'2명', status:'종료' },
-];
+const activeStatuses = new Set(['신규', '검토 중', '정보 보완', '가이드 탐색', '제안 완료']);
 
 export function AdminAgencyDetailPage({ agencyId }: { agencyId: string }) {
-  const agency = agencyDetails[(agencyId in agencyDetails ? agencyId : 'travelmate') as AgencyKey];
+  const [requests, setRequests] = useState<AdminAgencyRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    void getAgencyRequests()
+      .then(setRequests)
+      .catch(() => setHasError(true))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  const agencyRequests = useMemo(
+    () => requests.filter((request) => agencyPathId(request.company) === agencyId),
+    [agencyId, requests],
+  );
+  const latest = agencyRequests[0];
+
+  if (isLoading) return <StatusPage message="여행사 정보를 불러오는 중입니다." />;
+  if (hasError) return <StatusPage message="여행사 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요." />;
+  if (!latest) return <StatusPage message="해당 여행사의 채용 요청 정보를 찾을 수 없습니다." />;
+
+  const activeCount = agencyRequests.filter((request) => activeStatuses.has(request.status)).length;
+  const confirmedCount = agencyRequests.filter((request) => request.status === '매칭 확정').length;
+
   return <main className="mx-auto max-w-[1300px] p-4 sm:p-7 lg:p-8">
     <a className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900" href="/admin?view=agencies"><ArrowLeft className="size-4"/>여행사 목록으로</a>
-    <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div className="flex items-center gap-4"><span className="flex size-14 items-center justify-center rounded-2xl bg-rose-50 text-2xl font-bold text-rose-500">{agency.name[0]}</span><div><div className="flex items-center gap-2"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{agency.name}</h1><span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-500">{agency.grade}</span></div><p className="mt-1 text-sm text-slate-400">파트너 등록일 {agency.joined}</p></div></div><div className="flex gap-2"><button className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold">정보 수정</button><a href="/agency/request" className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="size-4"/>새 매칭 요청</a></div></div>
-    <section className="mt-7 grid gap-4 sm:grid-cols-3"><Metric label="누적 요청" value={`${agency.requests}건`} note="전체 매칭 요청"/><Metric label="진행 중" value={`${agency.active}건`} note="현재 운영 중" highlight/><Metric label="매칭 확정" value={`${agency.confirmed}건`} note="누적 확정 건수"/></section>
-    <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]"><div className="space-y-5"><Card title="회사 정보"><p className="mb-5 text-sm leading-6 text-slate-600">{agency.description}</p><div className="grid gap-4 sm:grid-cols-2"><Info icon={<Building2/>} label="회사명" value={agency.name}/><Info icon={<MapPin/>} label="주소" value={agency.address}/><Info icon={<Phone/>} label="대표전화" value={agency.phone}/><Info icon={<Building2/>} label="웹사이트" value={agency.website}/></div></Card><Card title="매칭 요청 이력"><div className="overflow-x-auto"><table className="w-full min-w-[650px] text-left text-sm"><thead className="border-y border-slate-100 bg-slate-50 text-[11px] text-slate-400"><tr><th className="px-3 py-3">요청</th><th>행사 기간</th><th>조건</th><th>상태</th></tr></thead><tbody className="divide-y divide-slate-100">{histories.map(row=><tr key={row.id} className="hover:bg-slate-50"><td className="px-3 py-4"><b>{row.event}</b><p className="mt-1 text-[11px] text-slate-400">{row.id}</p></td><td className="text-slate-500">{row.date}</td><td><p>{row.language}</p><p className="text-xs text-slate-400">가이드 {row.guides}</p></td><td><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.status==='신규'?'bg-rose-50 text-rose-600':row.status==='매칭 확정'?'bg-emerald-50 text-emerald-600':'bg-slate-100 text-slate-500'}`}>{row.status}</span></td></tr>)}</tbody></table></div></Card></div><div className="space-y-5"><Card title="담당자 정보"><div className="flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-500"><UserRound className="size-5"/></span><div><b>{agency.manager}</b><p className="text-xs text-slate-400">{agency.role}</p></div></div><div className="mt-5 space-y-3"><Contact icon={<Phone/>} value={agency.mobile}/><Contact icon={<Mail/>} value={agency.email}/></div><button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold"><MessageSquareText className="size-4"/>담당자에게 메시지</button></Card><Card title="내부 운영 메모"><textarea defaultValue={agency.note} className="min-h-28 w-full resize-none rounded-xl bg-slate-50 p-3 text-sm leading-6 text-slate-600 outline-none"/><button className="mt-3 w-full rounded-xl bg-slate-900 py-2.5 text-sm font-semibold text-white">메모 저장</button></Card><Card title="최근 활동"><div className="space-y-4 text-xs"><Activity date="오늘 09:42" text="새 매칭 요청이 접수되었습니다."/><Activity date="08.08 16:20" text="담당자가 김도윤으로 변경되었습니다."/><Activity date="08.02 11:05" text="여행사 정보가 업데이트되었습니다."/></div></Card></div></div>
+    <div className="mt-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div className="flex items-center gap-4"><span className="flex size-14 items-center justify-center rounded-2xl bg-rose-50 text-2xl font-bold text-rose-500">{latest.company[0]}</span><div><div className="flex items-center gap-2"><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{latest.company}</h1><span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-500">{agencyRequests.length >= 5 ? '핵심 파트너' : '일반'}</span></div><p className="mt-1 text-sm text-slate-400">채용 요청 {agencyRequests.length}건 · 최근 접수 {latest.createdAt}</p></div></div><div className="flex gap-2"><a href="/agency/request" className="flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white"><Plus className="size-4"/>새 매칭 요청</a></div></div>
+
+    <section className="mt-7 grid gap-4 sm:grid-cols-3"><Metric label="누적 요청" value={`${agencyRequests.length}건`} note="Firestore 등록 요청"/><Metric label="진행 중" value={`${activeCount}건`} note="현재 처리 중인 요청" highlight/><Metric label="매칭 확정" value={`${confirmedCount}건`} note="누적 확정 건수"/></section>
+
+    <div className="mt-5 grid gap-5 xl:grid-cols-[1.35fr_.65fr]"><div className="space-y-5"><Card title="채용 요청에 등록한 회사 정보"><p className="mb-5 text-sm leading-6 text-slate-600">{latest.companyDescription !== '-' ? latest.companyDescription : '회사 설명이 등록되지 않았습니다.'}</p><div className="grid gap-4 sm:grid-cols-2"><Info icon={<Building2/>} label="회사명" value={latest.company}/><Info icon={<UserRound/>} label="담당자" value={latest.manager}/><Info icon={<Phone/>} label="연락처" value={latest.phone}/><Info icon={<Mail/>} label="이메일" value={latest.email}/><Info icon={<Building2/>} label="행사 유형" value={latest.eventType}/><Info icon={<Building2/>} label="주요 활동 지역" value={latest.region}/></div></Card><Card title="실제 채용 요청 이력"><div className="overflow-x-auto"><table className="w-full min-w-[680px] text-left text-sm"><thead className="border-y border-slate-100 bg-slate-50 text-[11px] text-slate-400"><tr><th className="px-3 py-3">요청</th><th>행사 기간</th><th>조건</th><th>상태</th></tr></thead><tbody className="divide-y divide-slate-100">{agencyRequests.map((request) => <tr key={request.id} className="hover:bg-slate-50"><td className="px-3 py-4"><b>{request.event}</b><p className="mt-1 text-[11px] text-slate-400">{request.id} · {request.createdAt}</p></td><td className="text-slate-500">{request.date}</td><td><p>{request.languages.length ? request.languages.join(' · ') : '언어 미정'}</p><p className="text-xs text-slate-400">가이드 {request.guides}명 · {request.region}</p></td><td><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${request.status === '신규' ? 'bg-rose-50 text-rose-600' : request.status === '매칭 확정' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{request.status}</span></td></tr>)}</tbody></table></div></Card></div>
+
+      <div className="space-y-5"><Card title="요청 담당자"><div className="flex items-center gap-3"><span className="flex size-11 items-center justify-center rounded-full bg-slate-100 text-slate-500"><UserRound className="size-5"/></span><div><b>{latest.manager}</b><p className="text-xs text-slate-400">채용 요청 등록 담당자</p></div></div><div className="mt-5 space-y-3"><Contact icon={<Phone/>} value={latest.phone}/><Contact icon={<Mail/>} value={latest.email}/><Contact icon={<MessageSquareText/>} value={latest.preferredContactMethod}/></div><button className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold"><MessageSquareText className="size-4"/>담당자에게 메시지</button></Card><Card title="최근 요청 상세"><Detail label="행사명" value={latest.event}/><Detail label="참가 인원" value={latest.participantCount}/><Detail label="예산" value={latest.budget}/><Detail label="주요 업무" value={latest.task}/><Detail label="추가 메모" value={latest.additionalNotes}/></Card></div>
+    </div>
   </main>;
 }
 
+function StatusPage({ message }: { message: string }) { return <main className="mx-auto max-w-[1300px] p-4 sm:p-7 lg:p-8"><a className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-900" href="/admin?view=agencies"><ArrowLeft className="size-4"/>여행사 목록으로</a><div className="mt-8 rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-sm text-slate-500">{message}</div></main>; }
 function Card({title,children}:{title:string;children:ReactNode}){return <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><h2 className="mb-5 font-bold">{title}</h2>{children}</section>}
 function Metric({label,value,note,highlight}:{label:string;value:string;note:string;highlight?:boolean}){return <div className={`rounded-2xl border p-5 ${highlight?'border-rose-100 bg-rose-50':'border-slate-200 bg-white'}`}><p className="text-xs font-semibold text-slate-400">{label}</p><p className={`mt-2 text-2xl font-bold ${highlight?'text-rose-500':''}`}>{value}</p><p className="mt-2 text-[11px] text-slate-400">{note}</p></div>}
 function Info({icon,label,value}:{icon:ReactNode;label:string;value:string}){return <div className="flex gap-3"><span className="mt-1 text-slate-400">{icon}</span><div><p className="text-[11px] text-slate-400">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div></div>}
 function Contact({icon,value}:{icon:ReactNode;value:string}){return <div className="flex items-center gap-2 text-sm text-slate-600"><span className="text-slate-400">{icon}</span>{value}</div>}
-function Activity({date,text}:{date:string;text:string}){return <div className="relative border-l border-slate-200 pl-4"><i className="absolute -left-1 top-1 size-2 rounded-full bg-rose-400"/><p className="font-medium text-slate-600">{text}</p><p className="mt-1 text-[10px] text-slate-400">{date}</p></div>}
+function Detail({label,value}:{label:string;value:string}){return <div className="border-b border-slate-100 py-3 last:border-0"><p className="text-[11px] text-slate-400">{label}</p><p className="mt-1 text-sm leading-6 text-slate-600">{value !== '-' ? value : '미입력'}</p></div>}

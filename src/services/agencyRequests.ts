@@ -25,12 +25,18 @@ export type AdminRequestStatus =
 export type AdminAgencyRequest = {
   id: string;
   company: string;
+  companyDescription: string;
   manager: string;
   phone: string;
   email: string;
+  preferredContactMethod: string;
   event: string;
+  eventType: string;
   region: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
+  participantCount: string;
   languages: string[];
   guides: number;
   urgency: '긴급' | '보통';
@@ -38,6 +44,12 @@ export type AdminAgencyRequest = {
   assignee: string;
   task: string;
   budget: string;
+  certificatePriority: string;
+  sourcingExperience: string;
+  preferredExperience: string;
+  similarEventExperience: string;
+  drivingRequired: string;
+  additionalNotes: string;
   createdAt: string;
 };
 
@@ -79,14 +91,37 @@ export function mapAgencyRequestUrgency(urgency: unknown): '긴급' | '보통' {
   return typeof urgency === 'string' && urgency.includes('오늘') ? '긴급' : '보통';
 }
 
-function readString(data: Record<string, unknown>, key: string, fallback = '-') {
+function readString(data: Record<string, unknown>, key: string, fallback = '정보 없음'): string {
   const value = data[key];
-  return typeof value === 'string' && value.trim() ? value : fallback;
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === '-' || trimmed === '---' || trimmed === '상세 업무 미입력') {
+    return fallback;
+  }
+  return trimmed;
 }
 
 function readStringArray(data: Record<string, unknown>, key: string) {
   const value = data[key];
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+}
+
+export function formatDateRange(start: string | undefined, end: string | undefined): string {
+  const safeStart = start?.trim();
+  const safeEnd = end?.trim();
+
+  if (!safeStart && !safeEnd) return '정보 없음';
+  if (safeStart && safeEnd) return `${safeStart} - ${safeEnd}`;
+  if (safeStart) return safeStart;
+  return safeEnd || '정보 없음';
+}
+
+export function formatGuideRequirement(languages: string[], guides: number): string {
+  const label = languages.join(' · ');
+  if (!label && (!guides || guides <= 0)) return '정보 없음';
+  if (!label) return `${guides}명`;
+  if (!guides || guides <= 0) return label;
+  return `${label} · ${guides}명`;
 }
 
 function readGuideCount(data: Record<string, unknown>) {
@@ -101,15 +136,24 @@ function formatCreatedAt(value: unknown) {
 }
 
 function toAdminAgencyRequest(id: string, data: Record<string, unknown>): AdminAgencyRequest {
+  const startDate = readString(data, 'startDate', '');
+  const endDate = readString(data, 'endDate', '');
+
   return {
     id,
     company: readString(data, 'companyName', '신규 여행사'),
+    companyDescription: readString(data, 'companyDescription'),
     manager: readString(data, 'contactName'),
     phone: readString(data, 'contactPhone'),
     email: readString(data, 'contactEmail'),
+    preferredContactMethod: readString(data, 'preferredContactMethod'),
     event: readString(data, 'eventName', '가이드 매칭 요청'),
+    eventType: readString(data, 'eventType'),
     region: readString(data, 'region'),
-    date: `${readString(data, 'startDate')} - ${readString(data, 'endDate')}`,
+    date: formatDateRange(startDate || undefined, endDate || undefined),
+    startDate: startDate || undefined,
+    endDate: endDate || undefined,
+    participantCount: readString(data, 'participantCount'),
     languages: readStringArray(data, 'languages'),
     guides: readGuideCount(data),
     urgency: mapAgencyRequestUrgency(data.urgency),
@@ -117,8 +161,19 @@ function toAdminAgencyRequest(id: string, data: Record<string, unknown>): AdminA
     assignee: readString(data, 'assignee', '미지정'),
     task: readString(data, 'taskDescription', '상세 업무 미입력'),
     budget: readString(data, 'budget', '협의'),
+    certificatePriority: readString(data, 'certificatePriority'),
+    sourcingExperience: readString(data, 'sourcingExperience'),
+    preferredExperience: readString(data, 'preferredExperience'),
+    similarEventExperience: readString(data, 'similarEventExperience'),
+    drivingRequired: readString(data, 'drivingRequired'),
+    additionalNotes: readString(data, 'additionalNotes'),
     createdAt: formatCreatedAt(data.createdAt),
   };
+}
+
+/** A stable, URL-safe identifier for a travel agency name. */
+export function agencyPathId(company: string) {
+  return encodeURIComponent(company.trim());
 }
 
 export async function getAgencyRequests() {
