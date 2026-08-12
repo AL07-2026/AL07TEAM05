@@ -37,6 +37,7 @@ import {
   TravelerRequestPage,
   TravelerGuideDetailPage,
   TravelerRegisterPage,
+  TravelerRequestDetailPage,
 } from '@/app/traveler/TravelerPages';
 import { FeaturedGuidesSection } from '@/components/FeaturedGuidesSection';
 import { createAgencyRequest } from '@/services/agencyRequests';
@@ -1069,6 +1070,7 @@ const router = createBrowserRouter([
           { path: 'request', Component: TravelerRequestPage },
           { path: 'my-requests', Component: TravelerMyRequestsPage },
           { path: 'guides/:guideId', Component: TravelerGuideDetailPage },
+          { path: 'requests/:requestId', Component: TravelerRequestDetailPage },
         ],
       },
       { path: '*', Component: NotFoundPage },

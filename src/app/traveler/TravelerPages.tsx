@@ -3,7 +3,7 @@ import { ArrowLeft, Loader2, MapPin, MessageSquareText, Search, UserRound } from
 import { Link, useNavigate, useParams } from 'react-router';
 
 import { getPublicGuideProfiles } from '@/services/publicGuideProfiles';
-import { createTravelerRequest, listenTravelerRequests } from '@/services/travelerRequests';
+import { createTravelerRequest, getTravelerRequest, listenTravelerRequests } from '@/services/travelerRequests';
 import { signInTraveler, signUpTraveler, useTravelerUser } from '@/services/travelerAuth';
 import type { PublicGuideProfile, TravelerRequest } from '@/types';
 
@@ -664,6 +664,102 @@ export function TravelerRegisterPage() {
         </form>
       </section>
     </main>
+  );
+}
+
+export function TravelerRequestDetailPage() {
+  const { requestId } = useParams<{ requestId?: string }>();
+  const [request, setRequest] = useState<TravelerRequest | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!requestId) return;
+
+    let ignore = false;
+
+    void getTravelerRequest(requestId)
+      .then((item) => {
+        if (!ignore) setRequest(item);
+      })
+      .catch(() => {
+        if (!ignore) setRequest(null);
+      })
+      .finally(() => {
+        if (!ignore) setIsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [requestId]);
+
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#f6f7f9] text-slate-500">
+        <Loader2 className="mr-2 size-5 animate-spin" />
+        요청을 불러오는 중입니다.
+      </main>
+    );
+  }
+
+  if (!request) {
+    return (
+      <Shell eyebrow="개인 여행자" title="요청을 찾을 수 없습니다." description="요청이 삭제되었거나 접근할 수 없습니다.">
+        <button className="mt-6 inline-flex items-center gap-2 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold" onClick={() => navigate('/traveler/my-requests')} type="button">
+          <ArrowLeft className="size-4" />
+          내 요청으로
+        </button>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell eyebrow="개인 여행자" title={`매칭 요청 ${request.id}`} description="요청 상태와 상세 내용을 확인하세요.">
+      <div className="mt-8 grid gap-5 lg:grid-cols-[1.1fr_.9fr]">
+        <section className="space-y-5 rounded-2xl border border-border bg-white p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs text-slate-400">{request.region}</p>
+              <p className="text-sm text-slate-500">{request.startDate} - {request.endDate}</p>
+            </div>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-bold text-slate-600">{request.status}</span>
+          </div>
+          <p className="text-sm leading-6 text-muted-foreground">{request.requestDetails || '-'}</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Info label="인원" value={`${request.partySize}명`} />
+            <Info label="언어" value={request.language} />
+            <Info label="연락처" value={request.contactPhone} />
+            <Info label="선택 가이드" value={request.selectedGuideName || '-'} />
+          </div>
+        </section>
+        <section className="space-y-4 rounded-2xl border border-border bg-white p-6">
+          <p className="text-sm font-bold text-slate-700">요청 정보</p>
+          <div className="space-y-3 text-sm text-slate-600">
+            <div>
+              <p className="text-xs text-slate-400">요청 ID</p>
+              <p className="font-semibold">{request.id}</p>
+            </div>
+            <div>
+              <p className="text-xs text-slate-400">여행자</p>
+              <p className="font-semibold">{request.travelerName}</p>
+            </div>
+          </div>
+          <button className="w-full rounded-xl border border-border bg-white py-2.5 text-sm font-semibold" onClick={() => navigate('/traveler/my-requests')} type="button">
+            내 요청 목록
+          </button>
+        </section>
+      </div>
+    </Shell>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-white p-3">
+      <p className="text-[11px] text-slate-400">{label}</p>
+      <p className="mt-1 text-sm font-semibold">{value || '-'}</p>
+    </div>
   );
 }
 

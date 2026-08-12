@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, Filter, Search, UserRound } from 'lucide-react';
+import { CalendarDays, ChevronRight, Filter, MapPin, MessageSquareText, Search, UserRound } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -8,11 +8,16 @@ import {
   type AdminAgencyRequest,
   type AdminRequestStatus,
 } from '@/services/agencyRequests';
-import { getTravelerRequests, type TravelerRequest } from '@/services/travelerRequests';
+import { getTravelerRequests } from '@/services/travelerRequests';
+import type { TravelerRequest } from '@/types';
 
 type RequestState = AdminRequestStatus;
 type RequestRow = AdminAgencyRequest & { language: string; priority: '긴급' | '보통' };
 type TravelerRow = TravelerRequest & { travelerLabel: string };
+
+function isTravelerRow(row: RequestRow | TravelerRow): row is TravelerRow {
+  return 'travelerLabel' in row;
+}
 
 const states: RequestState[] = ['신규', '검토 중', '정보 보완', '가이드 탐색', '제안 완료', '매칭 확정'];
 const stateColors: Record<RequestState, string> = {
@@ -79,8 +84,11 @@ export function AdminRequestsPage() {
   };
 
   useEffect(() => {
-    if (tab === 'agency') loadRequests();
-    else loadTravelerRequests();
+    if (tab === 'agency') {
+      void Promise.resolve().then(loadRequests);
+    } else {
+      void Promise.resolve().then(loadTravelerRequests);
+    }
   }, [tab]);
 
   const agencyRows = useMemo(
@@ -156,40 +164,43 @@ export function AdminRequestsPage() {
                   <td className="px-4 py-10 text-center text-slate-400" colSpan={5}>아직 접수된 매칭 요청이 없습니다.</td>
                 </tr>
               ) : (
-                rows.map((row) => (
-                  <tr
-                    onClick={() => setSelected(row)}
-                    className={`cursor-pointer hover:bg-slate-50 ${selected?.id === row.id ? 'bg-rose-50/40' : ''}`}
-                    key={row.id}
-                  >
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <b className="truncate">{tab === 'agency' ? (row as RequestRow).event : (row as TravelerRow).requestDetails}</b>
-                      </div>
-                      <p className="mt-1 truncate text-xs text-slate-400">{row.id} · {tab === 'agency' ? (row as RequestRow).company : (row as TravelerRow).travelerLabel}</p>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4">
-                      <p className="truncate">{formatDateRange((row as TravelerRow).startDate, (row as TravelerRow).endDate)}</p>
-                      <p className="mt-1 truncate text-xs text-slate-400">{emptyValueFallback((row as TravelerRow).region)}</p>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4">
-                      {tab === 'agency' ? (
-                        <>
-                          <p className="truncate">{(row as RequestRow).language === '-' ? '정보 없음' : (row as RequestRow).language}</p>
-                          <p className="mt-1 truncate text-xs text-slate-400">{(row as RequestRow).guides}명</p>
-                        </>
-                      ) : (
-                        <p className="truncate">{(row as TravelerRow).language || '-'}</p>
-                      )}
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${tab === 'agency' ? stateColors[(row as RequestRow).status] : 'bg-slate-100 text-slate-600'}`}>{tab === 'agency' ? (row as RequestRow).status : (row as TravelerRow).status}</span>
-                    </td>
-                    <td className="pr-3">
-                      <ChevronRight className="size-4 text-slate-300" />
-                    </td>
-                  </tr>
-                ))
+                rows.map((row) => {
+                  const traveler = isTravelerRow(row);
+                  return (
+                    <tr
+                      onClick={() => setSelected(row)}
+                      className={`cursor-pointer hover:bg-slate-50 ${selected?.id === row.id ? 'bg-rose-50/40' : ''}`}
+                      key={row.id}
+                    >
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <b className="truncate">{traveler ? row.requestDetails : row.event}</b>
+                        </div>
+                        <p className="mt-1 truncate text-xs text-slate-400">{row.id} · {traveler ? row.travelerLabel : row.company}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4">
+                        <p className="truncate">{formatDateRange(row.startDate, row.endDate)}</p>
+                        <p className="mt-1 truncate text-xs text-slate-400">{emptyValueFallback(row.region)}</p>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-4">
+                        {traveler ? (
+                          <p className="truncate">{row.language || '-'}</p>
+                        ) : (
+                          <>
+                            <p className="truncate">{row.language === '-' ? '정보 없음' : row.language}</p>
+                            <p className="mt-1 truncate text-xs text-slate-400">{row.guides}명</p>
+                          </>
+                        )}
+                      </td>
+                      <td className="px-3 py-4">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${traveler ? 'bg-slate-100 text-slate-600' : stateColors[row.status]}`}>{row.status}</span>
+                      </td>
+                      <td className="pr-3">
+                        <ChevronRight className="size-4 text-slate-300" />
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

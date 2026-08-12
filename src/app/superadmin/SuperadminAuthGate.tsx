@@ -69,5 +69,5 @@ export function SuperadminAuthGate() {
     return <SuperadminLoginPage error={gate.error} onSignedIn={(access) => setGate({ status: 'authorized', admin: access })} />;
   }
 
-  return <SuperadminDashboardPage onSignOut={signOutAdmin} />;
+  return <SuperadminDashboardPage onSignOut={signOutAdmin} currentUser={gate.admin} />;
 }
