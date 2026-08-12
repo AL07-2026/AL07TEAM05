@@ -266,6 +266,7 @@ export function TravelerRequestPage() {
     selectedGuideId: preselected?.selectedGuideId || '',
     selectedGuideName: preselected?.selectedGuideName || '',
     region: '',
+    customRegion: '',
     startDate: '',
     endDate: '',
     partySize: '',
@@ -305,7 +306,8 @@ export function TravelerRequestPage() {
     const next: Record<string, string> = {};
     if (!form.travelerName.trim()) next.travelerName = '이름을 입력해 주세요.';
     if (!form.contactPhone.trim()) next.contactPhone = '연락처를 입력해 주세요.';
-    if (!form.region.trim()) next.region = '여행 지역을 입력해 주세요.';
+    if (!form.region) next.region = '여행 지역을 선택해 주세요.';
+    else if (form.region === '기타' && !form.customRegion.trim()) next.region = '지역을 직접 입력해 주세요.';
     if (!form.startDate) next.startDate = '시작 날짜를 선택해 주세요.';
     if (!form.endDate) next.endDate = '종료 날짜를 선택해 주세요.';
     if (!form.partySize) next.partySize = '인원을 입력해 주세요.';
@@ -325,13 +327,14 @@ export function TravelerRequestPage() {
 
     setIsSubmitting(true);
     try {
+      const resolvedRegion = form.region === '기타' ? form.customRegion.trim() : form.region;
       await createTravelerRequest({
         ownerUid: profile.ownerUid,
         travelerName: form.travelerName,
         contactPhone: form.contactPhone,
         selectedGuideId: form.selectedGuideId || undefined,
         selectedGuideName: form.selectedGuideName || undefined,
-        region: form.region,
+        region: resolvedRegion,
         startDate: form.startDate,
         endDate: form.endDate,
         partySize: form.partySize,
@@ -385,8 +388,29 @@ export function TravelerRequestPage() {
               </label>
               <label className="block text-sm font-bold">
                 여행 지역 *
-                <input className="mt-2 h-12 w-full rounded-xl border border-border bg-white px-4 text-sm outline-none focus:border-coral focus:ring-2 focus:ring-coral/20" required value={form.region} onChange={(event) => updateField('region', event.target.value)} />
+                <select
+                  className="mt-2 h-12 w-full rounded-xl border border-border bg-white px-4 text-sm outline-none focus:border-coral focus:ring-2 focus:ring-coral/20"
+                  required
+                  value={form.region}
+                  onChange={(event) => updateField('region', event.target.value)}
+                >
+                  <option value="">선택해 주세요</option>
+                  {regionOptions.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                  <option value="기타">기타</option>
+                </select>
                 {errors.region ? <p className="mt-2 text-sm font-semibold text-red-700">{errors.region}</p> : null}
+                {form.region === '기타' ? (
+                  <input
+                    className="mt-3 h-12 w-full rounded-xl border border-border bg-white px-4 text-sm outline-none focus:border-coral focus:ring-2 focus:ring-coral/20"
+                    placeholder="지역을 직접 입력해 주세요"
+                    value={form.customRegion}
+                    onChange={(event) => updateField('customRegion', event.target.value)}
+                  />
+                ) : null}
               </label>
               <label className="block text-sm font-bold">
                 필요 언어 *
