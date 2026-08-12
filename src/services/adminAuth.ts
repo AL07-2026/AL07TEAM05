@@ -82,6 +82,12 @@ export function signOutAdmin() {
   return signOut(auth);
 }
 
+export async function getCurrentAdminAccess(): Promise<AdminAccess | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+  return checkAdminAccess(user.uid);
+}
+
 export async function getAdminUsers(): Promise<{ uid: string; email: string; displayName: string; role: AdminRole; active: boolean; createdAt: string }[]> {
   const snapshot = await getDocs(collection(db, adminUsersCollection));
   return snapshot.docs.map((doc) => {

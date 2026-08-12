@@ -1,12 +1,14 @@
 import {
   addDoc,
   collection,
+  doc,
   getDocs,
   limit,
   orderBy,
   query,
   serverTimestamp,
   Timestamp,
+  updateDoc,
 } from 'firebase/firestore';
 
 import type { AgencyRequest } from '@/app/App';
@@ -188,4 +190,20 @@ export async function getAgencyRequests() {
   return snapshot.docs.map((document) =>
     toAdminAgencyRequest(document.id, document.data() as Record<string, unknown>),
   );
+}
+
+const ALLOWED_OPERATIONS_FIELDS = new Set(['status', 'assignee', 'updatedAt']);
+
+export async function updateAgencyRequestOperations({ requestId, status, assignee }: { requestId: string; status?: string; assignee?: string | null }) {
+  const reference = doc(db, agencyRequestsCollection, requestId);
+  const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
+
+  if (typeof status === 'string' && status.trim()) payload.status = status.trim();
+  if (assignee !== undefined) payload.assignee = assignee;
+
+  const allowedKeys = Object.keys(payload).filter((key) => ALLOWED_OPERATIONS_FIELDS.has(key));
+  if (!allowedKeys.length) return;
+
+  const updatePayload = Object.fromEntries(allowedKeys.map((key) => [key, payload[key]])) as Record<string, unknown>;
+  await updateDoc(reference, updatePayload);
 }
