@@ -28,13 +28,33 @@ export async function getTravelerRequest(requestId: string): Promise<TravelerReq
 }
 
 export async function createTravelerRequest(request: TravelerRequest) {
-  const document = await addDoc(collection(db, travelerRequestsCollection), {
-    ...request,
-    status: request.status || 'submitted',
+  const payload: Record<string, unknown> = {
+    ownerUid: request.ownerUid,
+    travelerName: request.travelerName,
+    contactPhone: request.contactPhone,
+    region: request.region,
+    startDate: request.startDate,
+    endDate: request.endDate,
+    partySize: request.partySize,
+    language: request.language,
+    requestDetails: request.requestDetails,
+    status: 'submitted',
     assignee: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
+  };
+
+  const selectedGuideId = typeof request.selectedGuideId === 'string' && request.selectedGuideId.trim() ? request.selectedGuideId.trim() : '';
+  const selectedGuideName = typeof request.selectedGuideName === 'string' && request.selectedGuideName.trim() ? request.selectedGuideName.trim() : '';
+
+  if (selectedGuideId) {
+    payload.selectedGuideId = selectedGuideId;
+  }
+  if (selectedGuideName) {
+    payload.selectedGuideName = selectedGuideName;
+  }
+
+  const document = await addDoc(collection(db, travelerRequestsCollection), payload);
   return document.id;
 }
 
