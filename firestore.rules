@@ -105,7 +105,8 @@ service cloud.firestore {
                       'urgency', 'preferredExperience', 'similarEventExperience',
                       'drivingRequired', 'budget', 'additionalNotes',
                       'privacyConsent', 'contactConsent',
-                      'status', 'assignee', 'createdAt'
+                      'status', 'assignee', 'createdAt',
+                      'preferredGuideId', 'preferredGuideName'
                     ])
                     && request.resource.data.keys().hasOnly([
                       'companyName', 'contactName', 'contactPhone', 'contactEmail',
@@ -116,7 +117,8 @@ service cloud.firestore {
                       'urgency', 'preferredExperience', 'similarEventExperience',
                       'drivingRequired', 'budget', 'additionalNotes',
                       'privacyConsent', 'contactConsent',
-                      'status', 'assignee', 'createdAt'
+                      'status', 'assignee', 'createdAt',
+                      'preferredGuideId', 'preferredGuideName'
                     ])
                     && request.resource.data.status == 'submitted'
                     && request.resource.data.assignee == null

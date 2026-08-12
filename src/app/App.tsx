@@ -60,6 +60,8 @@ export type AgencyRequest = {
   additionalNotes: string;
   privacyConsent: boolean;
   contactConsent: boolean;
+  preferredGuideId?: string;
+  preferredGuideName?: string;
 };
 
 type StoredAgencyRequest = AgencyRequest & {
@@ -102,6 +104,8 @@ const initialRequest: AgencyRequest = {
   additionalNotes: '',
   privacyConsent: false,
   contactConsent: false,
+  preferredGuideId: '',
+  preferredGuideName: '',
 };
 
 const languageOptions = ['영어', '일본어', '중국어', '베트남어', '태국어', '스페인어', '기타'];
@@ -231,11 +235,19 @@ function HomePage() {
     <div>
       <AgencyPage />
       <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
-        <SectionHeader
-          eyebrow="추천 가이드"
-          title="조건을 판단하기 쉬운 예시 프로필"
-          description="실제 운영에서는 검증된 가이드 데이터가 연결됩니다. 지금은 카드 구조와 정보 위계를 먼저 확인할 수 있습니다."
-        />
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <SectionHeader
+              eyebrow="추천 가이드"
+              title="조건을 판단하기 쉬운 예시 프로필"
+              description="실제 운영에서는 검증된 가이드 데이터가 연결됩니다. 지금은 카드 구조와 정보 위계를 먼저 확인할 수 있습니다."
+            />
+          </div>
+          <Link className={primaryButtonClass} to="/guide/register">
+            가이드 등록하기
+            <ArrowRight className="size-4" />
+          </Link>
+        </div>
         <FeaturedGuidesSection guides={guides} />
         <p className="mt-4 text-center text-xs text-muted-foreground">현재는 예시 프로필이며, 검증 데이터 연결 후 자동으로 노출됩니다.</p>
       </section>
@@ -321,7 +333,18 @@ function AgencyPage() {
 
 function AgencyRequestPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState<AgencyRequest>(initialRequest);
+  const location = useLocation();
+  const preferredGuide = useMemo(
+    () =>
+      (location.state as { preferredGuideId?: string; preferredGuideName?: string } | null) ??
+      null,
+    [location.state],
+  );
+  const [form, setForm] = useState<AgencyRequest>(() => ({
+    ...initialRequest,
+    preferredGuideId: preferredGuide?.preferredGuideId || '',
+    preferredGuideName: preferredGuide?.preferredGuideName || '',
+  }));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -410,8 +433,18 @@ function AgencyRequestPage() {
     <RequestShell
       description="한 화면에 모든 정보를 몰아넣지 않고, 필요한 내용만 단계별로 확인합니다."
       eyebrow="가이드 매칭 요청"
-      title="매칭 요청서 작성"
+      title={preferredGuide?.preferredGuideName ? `${preferredGuide.preferredGuideName} 가이드에게 매칭 요청` : '매칭 요청서 작성'}
     >
+      {preferredGuide?.preferredGuideName && (
+        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-border bg-white p-3 text-sm text-muted-foreground">
+          <span>
+            선택한 가이드: <span className="font-semibold text-ink">{preferredGuide.preferredGuideName}</span>
+          </span>
+          <button className="text-xs font-bold text-coral underline decoration-coral/40 underline-offset-4" onClick={() => setForm((current) => ({ ...current, preferredGuideId: '', preferredGuideName: '' }))} type="button">
+            선택 해제
+          </button>
+        </div>
+      )}
       <StepIndicator currentStep={currentStep} />
       <form className="mt-8 space-y-6" noValidate onSubmit={handleSubmit}>
         {currentStep === 0 && (
