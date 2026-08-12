@@ -5,6 +5,7 @@ import {
   Check,
   CheckCircle2,
   ClipboardCheck,
+  FileText,
   Globe2,
   Handshake,
   Languages,
@@ -12,7 +13,6 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
-  UserPlus,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -24,20 +24,14 @@ import {
   useMemo,
   useState,
 } from 'react';
-import {
-  Link,
-  Outlet,
-  RouterProvider,
-  createBrowserRouter,
-  useNavigate,
-} from 'react-router';
+import { Link, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavigate } from 'react-router';
 import GuideRegisterPage from './pages/GuideRegisterPage';
 
 import { AdminAuthGate } from '@/app/admin/AdminAuthGate';
+import { FeaturedGuidesSection } from '@/components/FeaturedGuidesSection';
 import { createAgencyRequest } from '@/services/agencyRequests';
 import { getFeaturedGuides } from '@/services/featuredGuides';
 import type { PublicGuideProfile } from '@/types';
-import { FeaturedGuidesSection } from '@/components/FeaturedGuidesSection';
 
 export type AgencyRequest = {
   companyName: string;
@@ -113,7 +107,7 @@ const initialRequest: AgencyRequest = {
 const languageOptions = ['영어', '일본어', '중국어', '베트남어', '태국어', '스페인어', '기타'];
 
 const eventTypes = [
-  '외국인 단체 관광',
+  '인바운드 단체 관광',
   '기업 인센티브 투어',
   '국제 행사',
   '전시 및 박람회',
@@ -125,33 +119,47 @@ const eventTypes = [
 
 const certificatePriorityOptions = [
   '반드시 필요',
-  '있으면 좋지만 경력이 더 중요',
+  '있으면 좋지만 경력도 중요',
   '자격증보다 추천과 실제 경험이 중요',
-  '잘 모르겠음',
+  '아직 모르겠음',
 ];
 
 const sourcingExperienceOptions = [
-  '해당 언어 또는 지역의 가이드를 처음 섭외함',
-  '이전에 섭외했지만 현재 연락 가능한 사람이 없음',
-  '기존 가이드가 있지만 추가 인력이 필요함',
-  '기존 가이드의 대체 인력이 필요함',
+  '해당 언어 또는 지역의 가이드를 처음 찾음',
+  '이전에 찾았지만 현재 연락 가능한 사람이 없음',
+  '기존 가이드가 있지만 추가 인력이 필요',
+  '기존 가이드를 대체할 인력이 필요',
 ];
 
 const urgencyOptions = ['오늘 안에 확인 필요', '3일 이내', '일주일 이내', '일정 협의 가능'];
 
-const linkButtonClass =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-coral px-6 py-3 text-sm font-semibold text-coral-foreground transition-colors hover:bg-coral/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]';
+const primaryButtonClass =
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-coral-foreground transition hover:bg-coral/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60';
 
 const secondaryButtonClass =
-  'inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border bg-background px-6 py-3 text-sm font-semibold text-ink transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 active:scale-[0.98]';
+  'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-border bg-white px-5 py-3 text-sm font-bold text-ink transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 const inputClass =
-  'mt-2 min-h-12 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
+  'mt-2 min-h-12 w-full rounded-xl border border-input bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
 
 const selectClass = `${inputClass} appearance-none`;
 
 const textareaClass =
-  'mt-2 min-h-28 w-full rounded-xl border border-input bg-background px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
+  'mt-2 min-h-28 w-full rounded-xl border border-input bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-coral focus:ring-2 focus:ring-coral/20';
+
+const requestSteps = [
+  { title: '회사 정보', description: '연락 가능한 기본 정보를 입력합니다.' },
+  { title: '행사 정보', description: '일정과 규모를 정리합니다.' },
+  { title: '가이드 조건', description: '언어, 업무, 우선순위를 선택합니다.' },
+  { title: '제출 확인', description: '요청 내용을 검토하고 보냅니다.' },
+] as const;
+
+const processSteps: Array<[string, string, string, LucideIcon]> = [
+  ['1', '요청 작성', '회사와 행사 정보를 입력합니다.', FileText],
+  ['2', '조건 검토', '일정, 언어, 지역을 확인합니다.', ClipboardCheck],
+  ['3', '후보 탐색', '조건에 맞는 가이드를 찾습니다.', Search],
+  ['4', '담당자 안내', '확인된 내용을 연락드립니다.', Send],
+];
 
 function trackAgencyEvent(eventName: AgencyEventName, detail?: Record<string, unknown>) {
   window.dispatchEvent(new CustomEvent(eventName, { detail }));
@@ -167,24 +175,19 @@ function trackAgencyEvent(eventName: AgencyEventName, detail?: Record<string, un
 function Layout() {
   return (
     <div className="min-h-screen bg-background text-ink">
-      <header className="sticky top-0 z-10 border-b border-border bg-background/95">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 sm:px-6">
-          <Link className="text-base font-semibold tracking-tight" to="/">
+      <header className="sticky top-0 z-20 border-b border-border bg-white/95 backdrop-blur">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-col gap-3 px-4 py-3 sm:px-6 md:flex-row md:items-center md:justify-between">
+          <Link className="flex items-center gap-2 text-base font-bold tracking-tight" to="/">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-coral text-white">
+              <Sparkles className="size-4" />
+            </span>
             TourMatch
           </Link>
-          <nav className="flex items-center gap-4 text-sm font-medium text-muted-foreground">
-            <Link className="hover:text-ink" to="/">
-              안내
-            </Link>
-            <Link className="hover:text-ink" to="/agency/request">
-              매칭 요청
-            </Link>
-            <Link className="hover:text-ink" to="/guide/register">
-              가이드 등록
-            </Link>
-            <Link className="hover:text-ink" to="/jobs">
-              채용정보
-            </Link>
+          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <NavLink to="/">안내</NavLink>
+            <NavLink to="/agency/request">매칭 요청</NavLink>
+            <NavLink to="/guide/register">가이드 등록</NavLink>
+            <NavLink to="/jobs">채용정보</NavLink>
           </nav>
         </div>
       </header>
@@ -192,17 +195,22 @@ function Layout() {
         <Outlet />
       </main>
       <footer className="border-t border-border bg-muted/40">
-        <div className="mx-auto flex max-w-4xl flex-col gap-3 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© 2026 TourMatch. 여행사와 가이드의 더 좋은 연결을 만듭니다.</p>
-          <Link
-            className="w-fit font-semibold text-slate-700 underline decoration-slate-400 underline-offset-4 transition-colors hover:text-ink"
-            to="/admin"
-          >
+        <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-7 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p>2026 TourMatch. 여행사와 검증된 가이드를 더 선명하게 연결합니다.</p>
+          <Link className="w-fit font-bold text-slate-700 underline decoration-slate-400 underline-offset-4 hover:text-ink" to="/admin">
             관리자 페이지
           </Link>
         </div>
       </footer>
     </div>
+  );
+}
+
+function NavLink({ children, to }: { children: ReactNode; to: string }) {
+  return (
+    <Link className="rounded-full px-3 py-2 transition hover:bg-muted hover:text-ink" to={to}>
+      {children}
+    </Link>
   );
 }
 
@@ -212,9 +220,7 @@ function HomePage() {
   useEffect(() => {
     let isMounted = true;
     void getFeaturedGuides().then((result) => {
-      if (isMounted) {
-        setGuides(result);
-      }
+      if (isMounted) setGuides(result);
     });
     return () => {
       isMounted = false;
@@ -224,24 +230,14 @@ function HomePage() {
   return (
     <div>
       <AgencyPage />
-      <section className="mx-auto max-w-4xl px-4 py-10 sm:px-6 sm:py-12">
-        <div className="mb-8 space-y-3">
-          <p className="text-sm font-semibold text-coral">가이드 둘러보기</p>
-          <h2 className="text-2xl font-semibold tracking-tight">가이드 후보를 미리 확인해보세요</h2>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-            언어, 지역, 경력 조건에 맞는 가이드를 확인할 수 있어요.
-          </p>
-        </div>
+      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <SectionHeader
+          eyebrow="추천 가이드"
+          title="조건을 판단하기 쉬운 예시 프로필"
+          description="실제 운영에서는 검증된 가이드 데이터가 연결됩니다. 지금은 카드 구조와 정보 위계를 먼저 확인할 수 있습니다."
+        />
         <FeaturedGuidesSection guides={guides} />
-        <p className="mt-3 text-center text-xs text-muted-foreground">
-          현재는 예시 프로필이며, 실제 가이드는 검증 후 노출됩니다.
-        </p>
-        <div className="mt-8 flex justify-center">
-          <Link className={linkButtonClass} to="/agency/request">
-            조건에 맞는 가이드 요청하기
-            <ArrowRight className="size-4" />
-          </Link>
-        </div>
+        <p className="mt-4 text-center text-xs text-muted-foreground">현재는 예시 프로필이며, 검증 데이터 연결 후 자동으로 노출됩니다.</p>
       </section>
     </div>
   );
@@ -254,33 +250,27 @@ function AgencyPage() {
 
   return (
     <div>
-      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-          <div className="space-y-5">
-            <p className="text-sm font-semibold text-coral">행사 운영 가이드 매칭</p>
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-              일정, 언어, 지역 조건에 맞는 가이드 후보를 확인해 드립니다
+      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
+        <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+          <div>
+            <p className="text-sm font-bold text-coral">행사 운영 가이드 매칭</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
+              일정, 언어, 지역에 맞는 가이드 후보를 빠르게 찾으세요
             </h1>
-            <p className="text-sm leading-7 text-muted-foreground sm:text-base">
-              행사나 여행 운영 업체가 필요한 조건을 제출하면 담당자가 요청 내용을 검토하고,
-              적합한 가이드 후보 확인 후 연락드리는 초기 매칭 서비스입니다.
+            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground">
+              요청을 남기면 운영팀이 조건을 검토하고 적합한 가이드 후보를 안내합니다.
             </p>
-            <p className="text-sm leading-6 text-muted-foreground">
-              자격증 제출 여부와 경력 정보는 확인 대상이며, 제출 즉시 매칭이 확정된다고 안내하지
-              않습니다.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
-                className={linkButtonClass}
-                onClick={() => trackAgencyEvent('agency_request_start')}
-                to="/agency/request"
-              >
+            <div className="mt-6 flex flex-wrap gap-2">
+              {['조건 맞춤 검토', '자격 정보 확인', '운영팀 직접 안내'].map((chip) => (
+                <span className="rounded-full border border-coral/20 bg-coral-soft px-3 py-1 text-xs font-bold text-coral" key={chip}>
+                  {chip}
+                </span>
+              ))}
+            </div>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link className={primaryButtonClass} onClick={() => trackAgencyEvent('agency_request_start')} to="/agency/request">
                 가이드 매칭 요청하기
                 <ArrowRight className="size-4" />
-              </Link>
-              <Link className={secondaryButtonClass} to="/guide/register">
-                가이드 등록하기
-                <UserPlus className="size-4" />
               </Link>
               <a className={secondaryButtonClass} href="#process">
                 진행 과정 보기
@@ -289,70 +279,40 @@ function AgencyPage() {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <FeatureCard
-              icon={Languages}
-              title="언어와 일정 조건 확인"
-              body="필요 언어, 활동 지역, 행사 기간, 필요 인원을 함께 검토합니다."
-            />
-            <FeatureCard
-              icon={ShieldCheck}
-              title="자격증과 경력 확인"
-              body="관광통역안내사 자격증 제출 필요 여부와 유사 행사 경험을 구분해 확인합니다."
-            />
-            <FeatureCard
-              className="sm:col-span-2"
-              icon={Handshake}
-              title="담당자 검토 후 연락"
-              body="요청 내용을 확인한 뒤 조건에 맞는 후보가 확인되면 별도로 안내드립니다."
-            />
+            <FeatureCard icon={Languages} title="조건 확인" body="언어, 지역, 일정 기준으로 후보 검토를 시작합니다." />
+            <FeatureCard icon={ShieldCheck} title="자격 확인" body="필요한 자격과 경력 조건을 함께 확인합니다." />
+            <FeatureCard className="sm:col-span-2" icon={Handshake} title="담당자 안내" body="후보 확인 후 운영팀이 직접 연락합니다." />
           </div>
         </div>
       </section>
 
-      <section className="border-t border-border bg-muted" id="process">
-        <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-          <div className="mb-8 space-y-3">
-            <h2 className="text-2xl font-semibold tracking-tight">진행 과정</h2>
-            <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              요청서 작성부터 담당자 연락까지 필요한 정보를 단계별로 확인합니다.
-            </p>
-          </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            {[
-              ['1', '요청서 작성', '회사, 행사, 가이드 조건을 입력합니다.'],
-              ['2', '조건 확인', '필수 입력값과 일정, 연락처 형식을 확인합니다.'],
-              ['3', '후보 탐색', '담당자가 조건에 맞는 가이드 후보를 확인합니다.'],
-              ['4', '담당자 연락', '확인된 내용과 후속 안내를 연락드립니다.'],
-            ].map(([step, title, body]) => (
-              <div className="rounded-xl border border-border bg-card p-5" key={step}>
-                <div className="flex size-9 items-center justify-center rounded-full bg-coral text-sm font-semibold text-coral-foreground">
-                  {step}
+      <section className="border-y border-border bg-muted/60" id="process">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+          <SectionHeader
+            eyebrow="PROCESS"
+            title="요청부터 안내까지 4단계"
+            description="긴 설명 대신 필요한 행동만 순서대로 보여줍니다."
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {processSteps.map(([step, title, body, Icon]) => (
+              <article className="rounded-2xl border border-border bg-white p-6" key={String(step)}>
+                <div className="flex items-center justify-between">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-coral text-sm font-bold text-white">{step}</span>
+                  <Icon className="size-5 text-coral" />
                 </div>
-                <h3 className="mt-3 font-semibold">{title}</h3>
+                <h3 className="mt-5 font-bold">{title}</h3>
                 <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-              </div>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="grid gap-6 md:grid-cols-3">
-          <InfoBlock
-            icon={Globe2}
-            title="필요 정보"
-            body="언어, 지역, 날짜, 인원, 주요 업무를 함께 입력해야 후보 검토가 가능합니다."
-          />
-          <InfoBlock
-            icon={ClipboardCheck}
-            title="자격 확인"
-            body="자격증이 필수인지, 실무 경험이 더 중요한지 선택해 검토 기준을 명확히 합니다."
-          />
-          <InfoBlock
-            icon={CalendarDays}
-            title="긴급도"
-            body="오늘 확인, 3일 이내, 일주일 이내 등 연락 우선순위를 함께 전달합니다."
-          />
+      <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <div className="grid gap-4 md:grid-cols-3">
+          <InfoBlock icon={Globe2} title="필수 정보" body="언어, 지역, 날짜, 인원을 중심으로 입력합니다." />
+          <InfoBlock icon={ClipboardCheck} title="자격 조건" body="자격증이 꼭 필요한지, 경험이 더 중요한지 구분합니다." />
+          <InfoBlock icon={CalendarDays} title="긴급도" body="확인 희망 시점을 선택해 우선순위를 전달합니다." />
         </div>
       </section>
     </div>
@@ -363,7 +323,7 @@ function AgencyRequestPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState<AgencyRequest>(initialRequest);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [step, setStep] = useState<'input' | 'confirm'>('input');
+  const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const selectedLanguages = useMemo(
     () =>
@@ -373,12 +333,9 @@ function AgencyRequestPage() {
     [form.customLanguage, form.languages],
   );
 
-  function updateField(
-    event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
-  ) {
+  function updateField(event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value, type } = event.target;
     const checked = event.target instanceof HTMLInputElement ? event.target.checked : false;
-
     setForm((current) => ({
       ...current,
       [name]: type === 'checkbox' ? checked : value,
@@ -394,30 +351,25 @@ function AgencyRequestPage() {
     }));
   }
 
-  function goToConfirm(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const nextErrors = validateConsent(form);
+  function goToStep(nextStep: number) {
+    setErrors({});
+    setCurrentStep(nextStep);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function goNext() {
+    const nextErrors = validateStep(form, currentStep);
     setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    void submitRequest();
+    if (Object.keys(nextErrors).length > 0) return;
+    goToStep(Math.min(currentStep + 1, requestSteps.length - 1));
   }
 
   async function submitRequest() {
-    if (isSubmitting) {
-      return;
-    }
+    if (isSubmitting) return;
 
-    const nextErrors = validateConsent(form);
+    const nextErrors = validateStep(form, 3);
     setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      setStep('input');
-      return;
-    }
+    if (Object.keys(nextErrors).length > 0) return;
 
     trackAgencyEvent('agency_request_submit_attempt', {
       languages: selectedLanguages,
@@ -427,10 +379,7 @@ function AgencyRequestPage() {
     setIsSubmitting(true);
 
     try {
-      const documentId = await createAgencyRequest({
-        ...form,
-        languages: selectedLanguages,
-      });
+      const documentId = await createAgencyRequest({ ...form, languages: selectedLanguages });
       const storedRequest: StoredAgencyRequest = {
         ...form,
         languages: selectedLanguages,
@@ -438,321 +387,224 @@ function AgencyRequestPage() {
         status: 'submitted',
         createdAt: new Date().toISOString(),
       };
-      trackAgencyEvent('agency_request_submit_success', {
-        id: storedRequest.id,
-      });
+      trackAgencyEvent('agency_request_submit_success', { id: storedRequest.id });
       void navigate('/agency/complete', { state: { request: storedRequest } });
     } catch {
       trackAgencyEvent('agency_request_submit_error', { message: 'firestore_write_failed' });
-      setErrors({ submit: '요청 내용을 임시 저장하지 못했습니다. 입력값을 유지한 상태로 다시 시도해 주세요.' });
-      setStep('input');
+      setErrors({ submit: '요청을 저장하지 못했습니다. 입력값은 유지되니 잠시 후 다시 시도해 주세요.' });
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  if (step === 'confirm') {
-    return (
-      <RequestShell
-        description="제출 전 요청 내용을 확인해 주세요."
-        eyebrow="가이드 매칭 요청"
-        title="요청 내용 확인"
-      >
-        <div className="space-y-6">
-          <SummaryGrid
-            items={[
-              ['회사명', form.companyName],
-              ['담당자', form.contactName],
-              ['연락처', form.contactPhone],
-              ['필요 언어', selectedLanguages.join(', ')],
-              ['행사 지역', form.region],
-              ['행사 기간', `${form.startDate} ~ ${form.endDate}`],
-              ['필요 가이드 인원', `${form.guideCount}명`],
-              ['자격증 중요도', form.certificatePriority],
-              ['기존 섭외 경험', form.sourcingExperience],
-              ['긴급도', form.urgency],
-            ]}
-          />
-          <div className="rounded-xl border border-border bg-muted p-5">
-            <h2 className="font-semibold">주요 업무</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{form.taskDescription}</p>
-          </div>
-          {errors.submit ? <ErrorText message={errors.submit} /> : null}
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <button className={secondaryButtonClass} onClick={() => setStep('input')} type="button">
-              <ArrowLeft className="size-4" />
-              이전 단계로 돌아가기
-            </button>
-            <button
-              className={`${linkButtonClass} disabled:cursor-not-allowed disabled:opacity-60`}
-              disabled={isSubmitting}
-              onClick={submitRequest}
-              type="button"
-            >
-              가이드 요청하기
-            </button>
-          </div>
-        </div>
-      </RequestShell>
-    );
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (currentStep === requestSteps.length - 1) {
+      void submitRequest();
+      return;
+    }
+    goNext();
   }
 
   return (
     <RequestShell
-      description="담당자가 조건을 확인할 수 있도록 필수 정보를 입력해 주세요."
+      description="한 화면에 모든 정보를 몰아넣지 않고, 필요한 내용만 단계별로 확인합니다."
       eyebrow="가이드 매칭 요청"
-      title="필요한 가이드 조건 입력"
+      title="매칭 요청서 작성"
     >
-      <form className="space-y-10" noValidate onSubmit={goToConfirm}>
-        <FieldGroup title="회사 및 담당자 정보">
-          <Field
-            error={errors.companyName}
-            label="회사명"
-            name="companyName"
-            onChange={updateField}
-            required
-            value={form.companyName}
-          />
-          <Field
-            error={errors.contactName}
-            label="담당자 이름"
-            name="contactName"
-            onChange={updateField}
-            required
-            value={form.contactName}
-          />
-          <Field
-            error={errors.contactPhone}
-            label="담당자 연락처"
-            name="contactPhone"
-            onChange={updateField}
-            placeholder="010-1234-5678"
-            required
-            value={form.contactPhone}
-          />
-          <Field
-            error={errors.contactEmail}
-            label="담당자 이메일"
-            name="contactEmail"
-            onChange={updateField}
-            placeholder="name@example.com"
-            type="email"
-            value={form.contactEmail}
-          />
-          <SelectField
-            label="선호 연락 방식"
-            name="preferredContactMethod"
-            onChange={updateField}
-            options={['전화', '문자', '이메일', '카카오톡']}
-            value={form.preferredContactMethod}
-          />
-          <TextareaField
-            label="회사 또는 행사 소개"
-            name="companyDescription"
-            onChange={updateField}
-            value={form.companyDescription}
-          />
-        </FieldGroup>
+      <StepIndicator currentStep={currentStep} />
+      <form className="mt-8 space-y-6" noValidate onSubmit={handleSubmit}>
+        {currentStep === 0 && (
+          <FieldGroup title="회사 / 담당자" description="담당자가 연락드릴 수 있는 기본 정보입니다.">
+            <Field error={errors.companyName} label="회사명" name="companyName" onChange={updateField} required value={form.companyName} />
+            <Field error={errors.contactName} label="담당자 이름" name="contactName" onChange={updateField} required value={form.contactName} />
+            <Field
+              error={errors.contactPhone}
+              label="연락처"
+              name="contactPhone"
+              onChange={updateField}
+              placeholder="010-1234-5678"
+              required
+              value={form.contactPhone}
+            />
+            <Field
+              error={errors.contactEmail}
+              label="이메일"
+              name="contactEmail"
+              onChange={updateField}
+              placeholder="name@example.com"
+              type="email"
+              value={form.contactEmail}
+            />
+            <SelectField
+              label="선호 연락 방식"
+              name="preferredContactMethod"
+              onChange={updateField}
+              options={['전화', '문자', '이메일', '카카오톡']}
+              value={form.preferredContactMethod}
+            />
+            <TextareaField
+              label="회사 또는 행사 소개"
+              name="companyDescription"
+              onChange={updateField}
+              placeholder="회사나 행사를 간단히 알려주세요. 선택 입력입니다."
+              value={form.companyDescription}
+            />
+          </FieldGroup>
+        )}
 
-        <FieldGroup title="행사 정보">
-          <Field
-            error={errors.eventName}
-            label="행사 또는 사업 이름"
-            name="eventName"
-            onChange={updateField}
-            required
-            value={form.eventName}
-          />
-          <SelectField
-            error={errors.eventType}
-            label="행사 유형"
-            name="eventType"
-            onChange={updateField}
-            options={eventTypes}
-            required
-            value={form.eventType}
-          />
-          <Field
-            error={errors.region}
-            label="진행 지역"
-            name="region"
-            onChange={updateField}
-            placeholder="예: 서울, 경기"
-            required
-            value={form.region}
-          />
-          <Field
-            error={errors.startDate}
-            label="시작 날짜"
-            name="startDate"
-            onChange={updateField}
-            required
-            type="date"
-            value={form.startDate}
-          />
-          <Field
-            error={errors.endDate}
-            label="종료 날짜"
-            name="endDate"
-            onChange={updateField}
-            required
-            type="date"
-            value={form.endDate}
-          />
-          <Field
-            error={errors.participantCount}
-            label="예상 참가 인원"
-            min="1"
-            name="participantCount"
-            onChange={updateField}
-            required
-            type="number"
-            value={form.participantCount}
-          />
-          <Field
-            error={errors.guideCount}
-            label="필요한 가이드 인원"
-            min="1"
-            name="guideCount"
-            onChange={updateField}
-            required
-            type="number"
-            value={form.guideCount}
-          />
-        </FieldGroup>
-
-        <FieldGroup title="필요한 가이드 조건">
-          <div className="md:col-span-2">
-            <span className="text-sm font-semibold">필요한 언어 *</span>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {languageOptions.map((language) => (
-                <label
-                  className={`inline-flex min-h-11 cursor-pointer items-center rounded-full border px-4 text-sm font-medium ${
-                    form.languages.includes(language)
-                      ? 'border-coral bg-coral-soft text-coral'
-                      : 'border-border bg-background text-ink'
-                  }`}
-                  key={language}
-                >
-                  <input
-                    checked={form.languages.includes(language)}
-                    className="sr-only"
-                    onChange={() => toggleLanguage(language)}
-                    type="checkbox"
-                  />
-                  {language}
-                </label>
-              ))}
+        {currentStep === 1 && (
+          <FieldGroup title="행사 정보" description="일정과 규모를 알면 후보 검토가 빨라집니다.">
+            <Field error={errors.eventName} label="행사 또는 사업 이름" name="eventName" onChange={updateField} required value={form.eventName} />
+            <SelectField error={errors.eventType} label="행사 유형" name="eventType" onChange={updateField} options={eventTypes} required value={form.eventType} />
+            <Field error={errors.region} label="진행 지역" name="region" onChange={updateField} placeholder="예: 서울, 경기" required value={form.region} />
+            <div className="grid gap-4 md:col-span-2 md:grid-cols-2">
+              <Field error={errors.startDate} label="시작 날짜" name="startDate" onChange={updateField} required type="date" value={form.startDate} />
+              <Field error={errors.endDate} label="종료 날짜" name="endDate" onChange={updateField} required type="date" value={form.endDate} />
             </div>
-            {form.languages.includes('기타') ? (
-              <input
-                className={inputClass}
-                name="customLanguage"
+            <Field
+              error={errors.participantCount}
+              label="예상 참가 인원"
+              min="1"
+              name="participantCount"
+              onChange={updateField}
+              required
+              type="number"
+              value={form.participantCount}
+            />
+            <Field
+              error={errors.guideCount}
+              label="필요 가이드 인원"
+              min="1"
+              name="guideCount"
+              onChange={updateField}
+              required
+              type="number"
+              value={form.guideCount}
+            />
+          </FieldGroup>
+        )}
+
+        {currentStep === 2 && (
+          <FieldGroup title="가이드 조건" description="꼭 필요한 조건과 선호 조건을 나누어 입력하세요.">
+            <div className="md:col-span-2">
+              <span className="text-sm font-bold">필요 언어 *</span>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {languageOptions.map((language) => (
+                  <button
+                    aria-pressed={form.languages.includes(language)}
+                    className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm font-bold transition ${
+                      form.languages.includes(language)
+                        ? 'border-coral bg-coral-soft text-coral'
+                        : 'border-border bg-white text-ink hover:bg-muted'
+                    }`}
+                    key={language}
+                    onClick={() => toggleLanguage(language)}
+                    type="button"
+                  >
+                    {form.languages.includes(language) && <Check className="size-4" />}
+                    {language}
+                  </button>
+                ))}
+              </div>
+              {form.languages.includes('기타') && (
+                <input
+                  className={inputClass}
+                  name="customLanguage"
+                  onChange={updateField}
+                  placeholder="필요한 언어를 입력해 주세요."
+                  value={form.customLanguage}
+                />
+              )}
+              {errors.languages ? <ErrorText message={errors.languages} /> : null}
+            </div>
+            <TextareaField error={errors.taskDescription} label="주요 업무" name="taskDescription" onChange={updateField} required value={form.taskDescription} />
+            <SelectField
+              error={errors.certificatePriority}
+              label="자격증 중요도"
+              name="certificatePriority"
+              onChange={updateField}
+              options={certificatePriorityOptions}
+              required
+              value={form.certificatePriority}
+            />
+            <SelectField
+              error={errors.sourcingExperience}
+              label="기존 섭외 경험"
+              name="sourcingExperience"
+              onChange={updateField}
+              options={sourcingExperienceOptions}
+              required
+              value={form.sourcingExperience}
+            />
+            <SelectField error={errors.urgency} label="요청 긴급도" name="urgency" onChange={updateField} options={urgencyOptions} required value={form.urgency} />
+            <Field label="선호 경력" name="preferredExperience" onChange={updateField} placeholder="예: 국제 행사 3회 이상" value={form.preferredExperience} />
+            <Field label="유사 행사 경험" name="similarEventExperience" onChange={updateField} value={form.similarEventExperience} />
+            <SelectField
+              label="차량 이동 가능 여부"
+              name="drivingRequired"
+              onChange={updateField}
+              options={['필요', '있으면 좋음', '필요 없음', '미정']}
+              value={form.drivingRequired}
+            />
+            <Field label="예상 예산" name="budget" onChange={updateField} placeholder="미정이어도 괜찮습니다." value={form.budget} />
+            <TextareaField label="추가 요청사항" name="additionalNotes" onChange={updateField} value={form.additionalNotes} />
+          </FieldGroup>
+        )}
+
+        {currentStep === 3 && (
+          <div className="space-y-5">
+            <SummarySection title="회사 정보" onEdit={() => goToStep(0)} items={[['회사명', form.companyName], ['담당자', form.contactName], ['연락처', form.contactPhone]]} />
+            <SummarySection
+              title="행사 정보"
+              onEdit={() => goToStep(1)}
+              items={[
+                ['행사명', form.eventName],
+                ['일정', `${form.startDate} - ${form.endDate}`],
+                ['지역', form.region],
+                ['인원', `${form.participantCount || '-'}명 / 가이드 ${form.guideCount || '-'}명`],
+              ]}
+            />
+            <SummarySection
+              title="가이드 조건"
+              onEdit={() => goToStep(2)}
+              items={[
+                ['언어', selectedLanguages.join(', ')],
+                ['주요 업무', form.taskDescription],
+                ['긴급도', form.urgency],
+                ['자격증', form.certificatePriority],
+              ]}
+            />
+            <div className="rounded-2xl border border-border bg-white p-5">
+              <h2 className="font-bold">동의 및 제출</h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">요청 처리와 담당자 연락을 위해 입력 정보를 사용합니다.</p>
+              <ConsentField
+                checked={form.privacyConsent}
+                error={errors.privacyConsent}
+                label="개인정보 수집 목적, 항목, 이용 안내를 확인했습니다."
+                name="privacyConsent"
                 onChange={updateField}
-                placeholder="필요한 언어를 입력해 주세요"
-                value={form.customLanguage}
               />
-            ) : null}
-            {errors.languages ? <ErrorText message={errors.languages} /> : null}
+              <ConsentField checked={form.contactConsent} error={errors.contactConsent} label="매칭 요청 처리를 위한 연락에 동의합니다." name="contactConsent" onChange={updateField} />
+            </div>
+            {errors.submit ? <ErrorText message={errors.submit} /> : null}
           </div>
-          <TextareaField
-            error={errors.taskDescription}
-            label="주요 업무"
-            name="taskDescription"
-            onChange={updateField}
-            required
-            value={form.taskDescription}
-          />
-          <SelectField
-            error={errors.certificatePriority}
-            label="자격증 중요도"
-            name="certificatePriority"
-            onChange={updateField}
-            options={certificatePriorityOptions}
-            required
-            value={form.certificatePriority}
-          />
-          <SelectField
-            error={errors.sourcingExperience}
-            label="기존 섭외 경험"
-            name="sourcingExperience"
-            onChange={updateField}
-            options={sourcingExperienceOptions}
-            required
-            value={form.sourcingExperience}
-          />
-          <SelectField
-            error={errors.urgency}
-            label="요청 긴급도"
-            name="urgency"
-            onChange={updateField}
-            options={urgencyOptions}
-            required
-            value={form.urgency}
-          />
-          <Field
-            label="선호 경력"
-            name="preferredExperience"
-            onChange={updateField}
-            placeholder="예: 국제 행사 3년 이상"
-            value={form.preferredExperience}
-          />
-          <Field
-            label="유사 행사 경험"
-            name="similarEventExperience"
-            onChange={updateField}
-            value={form.similarEventExperience}
-          />
-          <SelectField
-            label="차량 운전 가능 여부"
-            name="drivingRequired"
-            onChange={updateField}
-            options={['필요', '있으면 좋음', '필요 없음', '미정']}
-            value={form.drivingRequired}
-          />
-          <Field
-            label="예상 예산 또는 지급 금액"
-            name="budget"
-            onChange={updateField}
-            value={form.budget}
-          />
-          <TextareaField
-            label="추가 요청사항"
-            name="additionalNotes"
-            onChange={updateField}
-            value={form.additionalNotes}
-          />
-        </FieldGroup>
+        )}
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="font-semibold">개인정보 및 연락 동의</h2>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
-            매칭 요청 처리와 담당자 연락을 위해 회사명, 담당자 이름, 연락처, 이메일, 요청 내용을
-            수집합니다. 현재 MVP에서는 요청 내용을 브라우저 localStorage에 임시 저장합니다.
-          </p>
-          <ConsentField
-            checked={form.privacyConsent}
-            error={errors.privacyConsent}
-            label="개인정보 수집 목적, 항목, 이용 안내를 확인했습니다."
-            name="privacyConsent"
-            onChange={updateField}
-          />
-          <ConsentField
-            checked={form.contactConsent}
-            error={errors.contactConsent}
-            label="매칭 요청 처리를 위한 연락에 동의합니다."
-            name="contactConsent"
-            onChange={updateField}
-          />
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link className={secondaryButtonClass} to="/agency">
-            <ArrowLeft className="size-4" />
-            안내로 돌아가기
-          </Link>
-          <button className={linkButtonClass} type="submit">
-            요청 내용 확인
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-between">
+          {currentStep === 0 ? (
+            <Link className={secondaryButtonClass} to="/agency">
+              <ArrowLeft className="size-4" />
+              안내로 돌아가기
+            </Link>
+          ) : (
+            <button className={secondaryButtonClass} onClick={() => goToStep(currentStep - 1)} type="button">
+              <ArrowLeft className="size-4" />
+              이전
+            </button>
+          )}
+          <button className={primaryButtonClass} disabled={isSubmitting} type="submit">
+            {currentStep === requestSteps.length - 1 ? (isSubmitting ? '요청을 보내는 중...' : '매칭 요청 보내기') : '다음'}
             <ArrowRight className="size-4" />
           </button>
         </div>
@@ -762,133 +614,124 @@ function AgencyRequestPage() {
 }
 
 function AgencyCompletePage() {
+  const location = useLocation();
+  const request = (location.state as { request?: StoredAgencyRequest } | null)?.request;
   const completionSteps = [
-    ['01', '요청 내용 확인', '입력해 주신 여행 일정과 가이드 조건을 꼼꼼히 확인합니다.', Check],
-    ['02', '가이드 검토', 'TourMatch가 요청 조건에 맞는 가이드를 확인합니다.', Search],
-    ['03', '여행사로 안내', '적합한 가이드가 있을 경우 입력해 주신 연락처로 안내드립니다.', Send],
+    ['01', '요청 내용 확인', '행사 일정과 가이드 조건을 검토합니다.', Check],
+    ['02', '가이드 탐색', '조건에 맞는 후보를 확인합니다.', Search],
+    ['03', '담당자 안내', '입력하신 연락처로 결과를 안내합니다.', Send],
   ] as const;
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-background">
-      <section className="mx-auto max-w-4xl px-4 py-12 text-center sm:px-6 sm:py-16">
-        <div className="mx-auto flex size-24 items-center justify-center rounded-full bg-coral-soft sm:size-28">
-          <div className="flex size-20 items-center justify-center rounded-full border border-coral/20 sm:size-24">
-            <CheckCircle2 className="size-12 text-coral sm:size-14" strokeWidth={1.8} />
-          </div>
-        </div>
-        <p className="mt-6 text-sm font-bold tracking-wide text-coral sm:mt-8">가이드 요청 완료</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-          가이드 요청이 접수되었습니다
-        </h1>
-        <p className="mt-4 text-base font-semibold sm:text-lg">TourMatch에 요청해 주셔서 감사합니다.</p>
+    <section className="mx-auto max-w-5xl px-4 py-14 text-center sm:px-6 sm:py-20">
+      <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-coral-soft">
+        <CheckCircle2 className="size-11 text-coral" />
+      </div>
+      <p className="mt-6 text-sm font-bold text-coral">가이드 요청 완료</p>
+      <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">요청이 접수되었습니다</h1>
+      <p className="mx-auto mt-4 max-w-2xl text-sm leading-6 text-muted-foreground">
+        운영팀이 조건을 확인한 뒤 적합한 후보가 있으면 담당자에게 안내합니다.
+      </p>
+      {request?.id && (
+        <p className="mx-auto mt-5 w-fit rounded-full bg-muted px-4 py-2 text-xs font-bold text-muted-foreground">요청 ID: {request.id}</p>
+      )}
 
-        <div className="mx-auto mt-8 flex max-w-3xl items-center gap-4 rounded-xl border border-coral/20 bg-coral-soft p-5 text-left sm:mt-10 sm:p-6">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-coral text-white">
-            <Check className="size-6" strokeWidth={2.6} />
-          </span>
-          <p className="text-sm leading-7 font-semibold sm:text-base">
-            요청하신 조건에 적합한 가이드가 확인되면,
-            <br className="hidden sm:block" /> 작성해 주신 여행사 연락처로 안내드리겠습니다.
-          </p>
-        </div>
+      <ol className="mt-10 grid gap-4 text-left md:grid-cols-3">
+        {completionSteps.map(([number, title, description, Icon]) => (
+          <li className="rounded-2xl border border-border bg-white p-6" key={number}>
+            <Icon className="size-5 text-coral" />
+            <p className="mt-4 text-xs font-bold text-coral">{number}</p>
+            <h3 className="mt-2 font-bold">{title}</h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
+          </li>
+        ))}
+      </ol>
 
-        <div className="mt-12 text-left sm:mt-14">
-          <p className="text-xs font-bold tracking-[0.18em] text-muted-foreground">NEXT STEP</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight">접수 이후에는 이렇게 진행됩니다</h2>
-          <ol className="mt-6 grid gap-4 md:grid-cols-3">
-            {completionSteps.map(([number, title, description, Icon]) => (
-              <li className="rounded-xl border border-border bg-card p-5" key={number}>
-                <span className="flex size-11 items-center justify-center rounded-lg bg-muted text-coral">
-                  <Icon className="size-5" />
-                </span>
-                <p className="mt-4 text-xs font-bold text-coral">{number}</p>
-                <h3 className="mt-2 font-semibold">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">{description}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <p className="mt-8 text-sm text-muted-foreground">
-          ※ 요청 접수는 가이드 배정을 보장하지 않습니다.
-        </p>
-        <Link className={`${linkButtonClass} mt-8 min-w-52`} to="/agency">
-          <Sparkles className="size-4" />
-          확인
-        </Link>
-      </section>
-    </div>
+      <p className="mt-8 text-sm text-muted-foreground">요청 접수는 가이드 배정을 보장하지 않습니다.</p>
+      <Link className={`${primaryButtonClass} mt-8 min-w-48`} to="/agency">
+        확인
+      </Link>
+    </section>
   );
 }
 
-function FeatureCard({
-  body,
-  className = '',
-  icon: Icon,
-  title,
-}: {
-  body: string;
-  className?: string;
-  icon: LucideIcon;
-  title: string;
-}) {
+function FeatureCard({ body, className = '', icon: Icon, title }: { body: string; className?: string; icon: LucideIcon; title: string }) {
   return (
-    <div className={`rounded-xl border border-border bg-card p-5 ${className}`}>
-      <div className="flex size-11 items-center justify-center rounded-lg bg-coral-soft">
+    <article className={`rounded-2xl border border-border bg-white p-6 ${className}`}>
+      <div className="flex size-11 items-center justify-center rounded-xl bg-coral-soft">
         <Icon className="size-5 text-coral" />
       </div>
-      <h2 className="mt-3 text-base font-semibold">{title}</h2>
+      <h2 className="mt-4 text-base font-bold">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
-    </div>
+    </article>
   );
 }
 
-function InfoBlock({
-  body,
-  icon: Icon,
-  title,
-}: {
-  body: string;
-  icon: LucideIcon;
-  title: string;
-}) {
+function InfoBlock({ body, icon: Icon, title }: { body: string; icon: LucideIcon; title: string }) {
   return (
-    <div className="space-y-3">
+    <article className="rounded-2xl border border-border bg-white p-6">
       <Icon className="size-6 text-coral" />
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="text-sm leading-6 text-muted-foreground">{body}</p>
+      <h2 className="mt-4 text-lg font-bold">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
+    </article>
+  );
+}
+
+function SectionHeader({ description, eyebrow, title }: { description: string; eyebrow: string; title: string }) {
+  return (
+    <div className="mb-8 max-w-2xl">
+      <p className="text-sm font-bold text-coral">{eyebrow}</p>
+      <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">{title}</h2>
+      <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
     </div>
   );
 }
 
-function RequestShell({
-  children,
-  description,
-  eyebrow,
-  title,
-}: {
-  children: ReactNode;
-  description: string;
-  eyebrow: string;
-  title: string;
-}) {
+function RequestShell({ children, description, eyebrow, title }: { children: ReactNode; description: string; eyebrow: string; title: string }) {
   return (
-    <section className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-      <div className="mb-8 space-y-3">
-        <p className="text-sm font-semibold text-coral">{eyebrow}</p>
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
-        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">{description}</p>
+    <section className="mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
+      <div className="max-w-2xl">
+        <p className="text-sm font-bold text-coral">{eyebrow}</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
       {children}
     </section>
   );
 }
 
-function FieldGroup({ children, title }: { children: ReactNode; title: string }) {
+function StepIndicator({ currentStep }: { currentStep: number }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <div className="mt-5 grid gap-5 md:grid-cols-2">{children}</div>
+    <ol className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {requestSteps.map((step, index) => {
+        const active = index === currentStep;
+        const done = index < currentStep;
+        return (
+          <li className={`rounded-2xl border p-4 ${active ? 'border-coral bg-coral-soft' : 'border-border bg-white'}`} key={step.title}>
+            <div className="flex items-center gap-3">
+              <span className={`flex size-8 items-center justify-center rounded-full text-xs font-bold ${active || done ? 'bg-coral text-white' : 'bg-muted text-muted-foreground'}`}>
+                {done ? <Check className="size-4" /> : index + 1}
+              </span>
+              <div>
+                <p className="text-sm font-bold">{step.title}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{step.description}</p>
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function FieldGroup({ children, description, title }: { children: ReactNode; description: string; title: string }) {
+  return (
+    <section className="rounded-2xl border border-border bg-white p-5 sm:p-7">
+      <div>
+        <h2 className="text-lg font-bold">{title}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="mt-6 grid gap-5 md:grid-cols-2">{children}</div>
     </section>
   );
 }
@@ -912,18 +755,10 @@ function Field({
   value: string;
 } & Omit<InputHTMLAttributes<HTMLInputElement>, 'name' | 'onChange' | 'required' | 'type' | 'value'>) {
   return (
-    <label className="block text-sm font-semibold">
+    <label className="block text-sm font-bold">
       {label}
-      {required ? ' *' : ''}
-      <input
-        aria-invalid={Boolean(error)}
-        className={inputClass}
-        name={name}
-        onChange={onChange}
-        type={type}
-        value={value}
-        {...props}
-      />
+      {required && <RequiredMark />}
+      <input aria-invalid={Boolean(error)} className={inputClass} name={name} onChange={onChange} type={type} value={value} {...props} />
       {error ? <ErrorText message={error} /> : null}
     </label>
   );
@@ -947,16 +782,10 @@ function SelectField({
   value: string;
 }) {
   return (
-    <label className="block text-sm font-semibold">
+    <label className="block text-sm font-bold">
       {label}
-      {required ? ' *' : ''}
-      <select
-        aria-invalid={Boolean(error)}
-        className={selectClass}
-        name={name}
-        onChange={onChange}
-        value={value}
-      >
+      {required && <RequiredMark />}
+      <select aria-invalid={Boolean(error)} className={selectClass} name={name} onChange={onChange} value={value}>
         <option value="">선택해 주세요</option>
         {options.map((option) => (
           <option key={option} value={option}>
@@ -974,6 +803,7 @@ function TextareaField({
   label,
   name,
   onChange,
+  placeholder,
   required = false,
   value,
 }: {
@@ -981,41 +811,24 @@ function TextareaField({
   label: string;
   name: string;
   onChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
   required?: boolean;
   value: string;
 }) {
   return (
-    <label className="block text-sm font-semibold md:col-span-2">
+    <label className="block text-sm font-bold md:col-span-2">
       {label}
-      {required ? ' *' : ''}
-      <textarea className={textareaClass} name={name} onChange={onChange} value={value} />
+      {required && <RequiredMark />}
+      <textarea className={textareaClass} name={name} onChange={onChange} placeholder={placeholder} value={value} />
       {error ? <ErrorText message={error} /> : null}
     </label>
   );
 }
 
-function ConsentField({
-  checked,
-  error,
-  label,
-  name,
-  onChange,
-}: {
-  checked: boolean;
-  error?: string;
-  label: string;
-  name: string;
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-}) {
+function ConsentField({ checked, error, label, name, onChange }: { checked: boolean; error?: string; label: string; name: string; onChange: (event: ChangeEvent<HTMLInputElement>) => void }) {
   return (
-    <label className="mt-4 flex gap-3 text-sm leading-6">
-      <input
-        checked={checked}
-        className="mt-1 size-4 accent-coral"
-        name={name}
-        onChange={onChange}
-        type="checkbox"
-      />
+    <label className="mt-4 flex gap-3 rounded-xl border border-border bg-muted/50 p-4 text-sm leading-6">
+      <input checked={checked} className="mt-1 size-4 accent-coral" name={name} onChange={onChange} type="checkbox" />
       <span>
         {label}
         {error ? <ErrorText message={error} /> : null}
@@ -1024,30 +837,66 @@ function ConsentField({
   );
 }
 
-function SummaryGrid({ items }: { items: [string, string][] }) {
+function SummarySection({ items, onEdit, title }: { items: [string, string][]; onEdit: () => void; title: string }) {
   return (
-    <dl className="grid gap-3 md:grid-cols-2">
-      {items.map(([label, value]) => (
-        <div className="rounded-xl border border-border bg-card p-4" key={label}>
-          <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
-          <dd className="mt-1 text-sm font-medium text-ink">{value || '-'}</dd>
-        </div>
-      ))}
-    </dl>
+    <section className="rounded-2xl border border-border bg-white p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-bold">{title}</h2>
+        <button className="rounded-full border border-border px-3 py-1 text-xs font-bold hover:bg-muted" onClick={onEdit} type="button">
+          수정
+        </button>
+      </div>
+      <dl className="mt-4 grid gap-3 md:grid-cols-2">
+        {items.map(([label, value]) => (
+          <div className="rounded-xl bg-muted/60 p-4" key={label}>
+            <dt className="text-xs font-bold text-muted-foreground">{label}</dt>
+            <dd className="mt-1 text-sm font-semibold text-ink">{value || '-'}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
-function ErrorText({ message }: { message: string }) {
-  return <p className="mt-2 text-sm font-medium text-red-700">{message}</p>;
+function RequiredMark() {
+  return <span className="text-coral"> *</span>;
 }
 
-function validateConsent(form: AgencyRequest) {
+function ErrorText({ message }: { message: string }) {
+  return <p className="mt-2 text-sm font-semibold text-red-700">{message}</p>;
+}
+
+function validateStep(form: AgencyRequest, step: number) {
   const nextErrors: Record<string, string> = {};
-  if (!form.privacyConsent) {
-    nextErrors.privacyConsent = '개인정보 수집 안내 확인이 필요합니다.';
+
+  if (step === 0) {
+    if (!form.companyName.trim()) nextErrors.companyName = '회사명을 입력해 주세요.';
+    if (!form.contactName.trim()) nextErrors.contactName = '담당자 이름을 입력해 주세요.';
+    if (!form.contactPhone.trim()) nextErrors.contactPhone = '연락처를 입력해 주세요.';
   }
-  if (!form.contactConsent) {
-    nextErrors.contactConsent = '연락 동의가 필요합니다.';
+
+  if (step === 1) {
+    if (!form.eventName.trim()) nextErrors.eventName = '행사 이름을 입력해 주세요.';
+    if (!form.eventType) nextErrors.eventType = '행사 유형을 선택해 주세요.';
+    if (!form.region.trim()) nextErrors.region = '진행 지역을 입력해 주세요.';
+    if (!form.startDate) nextErrors.startDate = '시작 날짜를 선택해 주세요.';
+    if (!form.endDate) nextErrors.endDate = '종료 날짜를 선택해 주세요.';
+    if (!form.participantCount) nextErrors.participantCount = '예상 참가 인원을 입력해 주세요.';
+    if (!form.guideCount) nextErrors.guideCount = '필요 가이드 인원을 입력해 주세요.';
+  }
+
+  if (step === 2) {
+    if (!form.languages.length || (form.languages.includes('기타') && !form.customLanguage.trim())) nextErrors.languages = '필요 언어를 1개 이상 선택해 주세요.';
+    if (!form.taskDescription.trim()) nextErrors.taskDescription = '주요 업무를 입력해 주세요.';
+    if (!form.certificatePriority) nextErrors.certificatePriority = '자격증 중요도를 선택해 주세요.';
+    if (!form.sourcingExperience) nextErrors.sourcingExperience = '기존 섭외 경험을 선택해 주세요.';
+    if (!form.urgency) nextErrors.urgency = '요청 긴급도를 선택해 주세요.';
+  }
+
+  if (step === 3) {
+    Object.assign(nextErrors, validateStep(form, 0), validateStep(form, 1), validateStep(form, 2));
+    if (!form.privacyConsent) nextErrors.privacyConsent = '개인정보 수집 안내 확인이 필요합니다.';
+    if (!form.contactConsent) nextErrors.contactConsent = '연락 동의가 필요합니다.';
   }
 
   return nextErrors;
@@ -1056,14 +905,10 @@ function validateConsent(form: AgencyRequest) {
 function NotFoundPage() {
   return (
     <section className="mx-auto max-w-4xl px-4 py-20 text-center sm:px-6">
-      <p className="text-sm font-medium text-coral">404</p>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">
-        페이지를 찾을 수 없습니다
-      </h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        주소가 잘못 입력되었거나 페이지가 삭제되었을 수 있습니다.
-      </p>
-      <Link className={`${linkButtonClass} mt-6`} to="/agency">
+      <p className="text-sm font-bold text-coral">404</p>
+      <h1 className="mt-3 text-3xl font-bold tracking-tight">페이지를 찾을 수 없습니다</h1>
+      <p className="mt-2 text-sm text-muted-foreground">주소를 다시 확인해 주세요.</p>
+      <Link className={`${primaryButtonClass} mt-6`} to="/agency">
         안내로 이동
       </Link>
     </section>
