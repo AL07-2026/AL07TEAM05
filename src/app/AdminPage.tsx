@@ -24,15 +24,18 @@ import { AdminGuidesPage } from '@/app/admin/AdminGuidesPage';
 import { AdminPartnersPage } from '@/app/admin/AdminPartnersPage';
 import { AdminOperationsPage } from '@/app/admin/AdminOperationsPage';
 import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
+import { AdminTravelerRequestPage } from '@/app/admin/AdminTravelerRequestPage';
 import { getAgencyRequests, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
+import type { AdminRole } from '@/types';
 
-type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings';
+type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings' | 'traveler-request-detail';
 
 type RequestStatus = AdminRequestStatus;
 type AdminRequest = AdminAgencyRequest;
 
 type AdminPageProps = {
   adminDisplayName?: string;
+  adminRole?: AdminRole;
   onSignOut?: () => void | Promise<void>;
 };
 
@@ -47,6 +50,7 @@ const statusStyle: Record<RequestStatus, string> = {
 
 export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: AdminPageProps) {
   const [activePage, setActivePageState] = useState<AdminSection>(() => {
+    if (/^\/admin\/requests\/[^/]+$/.test(window.location.pathname)) return 'traveler-request-detail';
     if (/^\/admin\/agencies\/[^/]+$/.test(window.location.pathname)) return 'agency-detail';
     const requested = new URLSearchParams(window.location.search).get('view');
     const sections: AdminSection[] = ['dashboard', 'analytics', 'requests', 'agencies', 'guides', 'messages', 'settings'];
@@ -96,7 +100,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
           </div>
         </header>
 
-        {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'agencies' ? <AdminPartnersPage mode="agencies" /> : activePage === 'guides' ? <AdminGuidesPage /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
+        {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'traveler-request-detail' ? <AdminTravelerRequestPage requestId={window.location.pathname.split('/').pop() || ''} /> : activePage === 'agencies' ? <AdminPartnersPage mode="agencies" /> : activePage === 'guides' ? <AdminGuidesPage /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, {adminDisplayName}님</h1><p className="mt-2 text-sm text-slate-500">현재 Firestore에서 불러온 요청 <b className="text-slate-800">{requests.length}건</b>을 조회 중입니다.</p></div>
             <span className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"><Sparkles className="size-4 text-rose-500" />읽기 전용</span>

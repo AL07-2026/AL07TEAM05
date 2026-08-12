@@ -28,6 +28,17 @@ import { Link, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavi
 import GuideRegisterPage from './pages/GuideRegisterPage';
 
 import { AdminAuthGate } from '@/app/admin/AdminAuthGate';
+import { SuperadminAuthGate } from '@/app/superadmin/SuperadminAuthGate';
+import { TravelerLayout } from '@/app/traveler/TravelerLayout';
+import {
+  TravelerHomePage,
+  TravelerLoginPage,
+  TravelerMyRequestsPage,
+  TravelerRequestPage,
+  TravelerGuideDetailPage,
+  TravelerRegisterPage,
+  TravelerRequestDetailPage,
+} from '@/app/traveler/TravelerPages';
 import { FeaturedGuidesSection } from '@/components/FeaturedGuidesSection';
 import { createAgencyRequest } from '@/services/agencyRequests';
 import { getFeaturedGuides } from '@/services/featuredGuides';
@@ -243,12 +254,14 @@ function HomePage() {
               description="실제 운영에서는 검증된 가이드 데이터가 연결됩니다. 지금은 카드 구조와 정보 위계를 먼저 확인할 수 있습니다."
             />
           </div>
-          <Link className={primaryButtonClass} to="/guide/register">
-            가이드 등록하기
-            <ArrowRight className="size-4" />
-          </Link>
         </div>
         <FeaturedGuidesSection guides={guides} />
+        <section className="mx-auto max-w-6xl px-4 sm:px-6">
+          <p className="mt-2 text-center text-sm font-semibold text-slate-600">관심 있는 가이드가 있으신가요?</p>
+          <Link className={secondaryButtonClass + ' mx-auto mt-3 w-fit'} to="/agency/request">
+            이 가이드로 매칭 요청
+          </Link>
+        </section>
         <p className="mt-4 text-center text-xs text-muted-foreground">현재는 예시 프로필이며, 검증 데이터 연결 후 자동으로 노출됩니다.</p>
       </section>
     </div>
@@ -941,15 +954,102 @@ function NotFoundPage() {
       <p className="text-sm font-bold text-coral">404</p>
       <h1 className="mt-3 text-3xl font-bold tracking-tight">페이지를 찾을 수 없습니다</h1>
       <p className="mt-2 text-sm text-muted-foreground">주소를 다시 확인해 주세요.</p>
-      <Link className={`${primaryButtonClass} mt-6`} to="/agency">
+      <Link className={`${primaryButtonClass} mt-6`} to="/">
         안내로 이동
       </Link>
     </section>
   );
 }
 
+function JobsPage() {
+  const [query, setQuery] = useState('');
+
+  const jobs = useMemo(
+    () =>
+      [
+        { id: 'JOB-001', title: '서울 지역 영어 가이드', company: '트래블메이트', region: '서울', date: '2026-08-15 ~ 2026-08-17', languages: ['영어'], guides: 2 },
+        { id: 'JOB-002', title: '부산 일본어 단체 투어', company: '하나로투어', region: '부산', date: '2026-08-20 ~ 2026-08-22', languages: ['일본어'], guides: 3 },
+        { id: 'JOB-003', title: '제주 중문 패키지 가이드', company: 'K-컨벤션', region: '제주', date: '2026-09-01 ~ 2026-09-03', languages: ['중국어'], guides: 1 },
+        { id: 'JOB-004', title: '서울 다국어 국제 행사', company: '글로벌이벤트', region: '서울', date: '2026-09-10 ~ 2026-09-12', languages: ['영어', '중국어', '일본어'], guides: 5 },
+      ],
+    [],
+  );
+
+  const filtered = useMemo(
+    () =>
+      jobs.filter(
+        (job) =>
+          `${job.id} ${job.title} ${job.company} ${job.region}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ),
+    [jobs, query],
+  );
+
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+      <div className="max-w-2xl">
+        <p className="text-sm font-bold text-coral">채용정보</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">가이드 채용 정보</h1>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">
+          현재 모집 중인 가이드 채용 정보를 확인하세요. 관심 있는 공고가 있으면 매칭 요청으로 연결할 수 있습니다.
+        </p>
+        <label className="mt-6 flex h-12 items-center gap-2 rounded-xl border border-input bg-white px-4">
+          <Search className="size-4 text-slate-400" />
+          <input
+            className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            placeholder="공고명, 회사, 지역 검색"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+      </div>
+
+      <div className="mt-8 grid gap-4">
+        {filtered.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-border bg-white p-10 text-center text-sm text-muted-foreground">
+            검색 결과가 없습니다.
+          </p>
+        )}
+        {filtered.map((job) => (
+          <article key={job.id} className="rounded-2xl border border-border bg-white p-5 transition hover:shadow-sm">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-400">{job.id}</span>
+                  <span className="rounded-full bg-coral-soft px-2 py-0.5 text-[10px] font-bold text-coral">모집중</span>
+                </div>
+                <h2 className="mt-2 text-base font-bold">{job.title}</h2>
+                <p className="mt-1 text-xs text-slate-500">{job.company} · {job.region}</p>
+              </div>
+              <div className="text-right text-xs text-slate-500">
+                <p>{job.date}</p>
+                <p className="mt-1 font-semibold">가이드 {job.guides}명</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {job.languages.map((language) => (
+                <span key={language} className="rounded-lg border border-border bg-muted/40 px-3 py-1 text-xs font-semibold">
+                  {language}
+                </span>
+              ))}
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Link className={primaryButtonClass} to="/agency/request">
+                매칭 요청하기
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 const router = createBrowserRouter([
   { path: '/admin/*', Component: AdminAuthGate },
+  { path: '/superadmin/*', Component: SuperadminAuthGate },
   {
     path: '/',
     Component: Layout,
@@ -959,6 +1059,20 @@ const router = createBrowserRouter([
       { path: 'agency/request', Component: AgencyRequestPage },
       { path: 'agency/complete', Component: AgencyCompletePage },
       { path: 'guide/register', Component: GuideRegisterPage },
+      { path: 'jobs', Component: JobsPage },
+      {
+        path: 'traveler/*',
+        Component: TravelerLayout,
+        children: [
+          { index: true, Component: TravelerHomePage },
+          { path: 'login', Component: TravelerLoginPage },
+          { path: 'register', Component: TravelerRegisterPage },
+          { path: 'request', Component: TravelerRequestPage },
+          { path: 'my-requests', Component: TravelerMyRequestsPage },
+          { path: 'guides/:guideId', Component: TravelerGuideDetailPage },
+          { path: 'requests/:requestId', Component: TravelerRequestDetailPage },
+        ],
+      },
       { path: '*', Component: NotFoundPage },
     ],
   },

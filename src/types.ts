@@ -33,3 +33,53 @@ export type GuideVerificationLog = {
   adminUid: string;
   createdAt: string;
 };
+
+export type AdminRole = 'admin' | 'superadmin';
+
+export type TravelerProfile = {
+  ownerUid: string;
+  displayName: string;
+  email: string;
+  phone?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TravelerRequest = {
+  id?: string;
+  ownerUid: string;
+  travelerName: string;
+  contactPhone: string;
+  selectedGuideId?: string;
+  selectedGuideName?: string;
+  region: string;
+  startDate: string;
+  endDate: string;
+  partySize: string;
+  language: string;
+  requestDetails: string;
+  status: string;
+  assignee?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type PlatformAuditLog = {
+  actorUid: string;
+  actorRole: AdminRole;
+  action: string;
+  targetType: string;
+  targetId: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type AdminUser = {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: AdminRole;
+  active: boolean;
+  createdAt: string;
+};
