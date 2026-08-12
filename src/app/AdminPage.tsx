@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { AdminRequestsPage } from '@/app/admin/AdminRequestsPage';
+import { AdminGuidesPage } from '@/app/admin/AdminGuidesPage';
 import { AdminPartnersPage } from '@/app/admin/AdminPartnersPage';
 import { AdminOperationsPage } from '@/app/admin/AdminOperationsPage';
 import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
@@ -92,7 +93,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
           </div>
         </header>
 
-        {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'agencies' || activePage === 'guides' ? <AdminPartnersPage mode={activePage} /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
+        {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'agencies' ? <AdminPartnersPage mode="agencies" /> : activePage === 'guides' ? <AdminGuidesPage /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, {adminDisplayName}님</h1><p className="mt-2 text-sm text-slate-500">오늘 확인해야 할 신규 요청이 <b className="text-slate-800">{requests.filter((r) => r.status === '신규').length}건</b> 있습니다.</p></div>
             <button className="flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white shadow-sm"><Sparkles className="size-4" />가이드 후보 찾기</button>

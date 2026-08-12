@@ -35,6 +35,7 @@ export function getFeaturedGuides(): Promise<readonly PublicGuideProfile[]> {
 const mockFeaturedGuides: readonly PublicGuideProfile[] = [
   {
     id: 'example-guide-1',
+    ownerUid: 'example-guide-1',
     name: '김민준',
     languages: ['영어'],
     regions: ['서울', '경기'],
@@ -43,9 +44,11 @@ const mockFeaturedGuides: readonly PublicGuideProfile[] = [
     verified: true,
     featured: true,
     displayOrder: 1,
+    updatedAt: new Date().toISOString(),
   },
   {
     id: 'example-guide-2',
+    ownerUid: 'example-guide-2',
     name: '이서연',
     languages: ['일본어'],
     regions: ['서울', '부산'],
@@ -54,9 +57,11 @@ const mockFeaturedGuides: readonly PublicGuideProfile[] = [
     verified: true,
     featured: true,
     displayOrder: 2,
+    updatedAt: new Date().toISOString(),
   },
   {
     id: 'example-guide-3',
+    ownerUid: 'example-guide-3',
     name: '박지훈',
     languages: ['중국어'],
     regions: ['서울', '제주'],
@@ -65,5 +70,6 @@ const mockFeaturedGuides: readonly PublicGuideProfile[] = [
     verified: true,
     featured: true,
     displayOrder: 3,
+    updatedAt: new Date().toISOString(),
   },
 ];
