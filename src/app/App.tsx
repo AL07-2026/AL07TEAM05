@@ -255,9 +255,6 @@ function HomePage() {
               description="실제 운영에서는 검증된 가이드 데이터가 연결됩니다. 지금은 카드 구조와 정보 위계를 먼저 확인할 수 있습니다."
             />
           </div>
-          <Link className={secondaryButtonClass + ' w-fit'} to="/guide/register">
-            가이드 등록하기
-          </Link>
         </div>
         <FeaturedGuidesSection
           guides={guides}
@@ -267,6 +264,17 @@ function HomePage() {
             })
           }
         />
+        <section className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-muted/40 p-6 text-center">
+            <p className="text-sm font-semibold text-slate-600">가이드로 활동하고 싶으신가요?</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              TourMatch에 프로필을 등록하고 새로운 매칭 기회를 확인하세요.
+            </p>
+            <Link className={secondaryButtonClass + ' mx-auto mt-4 w-fit'} to="/guide/register">
+              가이드 등록하기
+            </Link>
+          </div>
+        </section>
       </section>
     </div>
   );

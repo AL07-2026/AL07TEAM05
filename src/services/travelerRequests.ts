@@ -31,6 +31,7 @@ export async function createTravelerRequest(request: TravelerRequest) {
   const document = await addDoc(collection(db, travelerRequestsCollection), {
     ...request,
     status: request.status || 'submitted',
+    assignee: null,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
