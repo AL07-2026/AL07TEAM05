@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { getTravelerRequest } from '@/services/travelerRequests';
+import { adminStatusTone, normalizeAdminStatus } from '@/app/admin/adminUnifiedRequests';
 import type { TravelerRequest } from '@/types';
 
 export function AdminTravelerRequestPage({ requestId }: { requestId: string }) {
@@ -54,7 +55,7 @@ export function AdminTravelerRequestPage({ requestId }: { requestId: string }) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">개인 여행자 매칭 요청</h1>
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700">{request.status}</span>
+            <span className={`rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold ${adminStatusTone(request.status)}`}>{normalizeAdminStatus(request.status)}</span>
           </div>
           <p className="mt-1 text-sm text-slate-400">{request.id} · {request.travelerName}</p>
         </div>
@@ -90,7 +91,7 @@ export function AdminTravelerRequestPage({ requestId }: { requestId: string }) {
               </div>
               <div>
                 <p className="text-[11px] text-slate-400">현재 상태</p>
-                <p className="mt-1 font-semibold">{request.status}</p>
+                <p className={`mt-1 font-semibold ${adminStatusTone(request.status)} rounded-full px-2.5 py-1 text-xs w-fit`}>{normalizeAdminStatus(request.status)}</p>
               </div>
             </div>
             <p className="mt-4 rounded-xl bg-white p-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-200">

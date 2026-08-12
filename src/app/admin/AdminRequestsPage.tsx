@@ -6,24 +6,18 @@ import { getTravelerRequests } from '@/services/travelerRequests';
 import type { TravelerRequest } from '@/types';
 import {
   type AdminUnifiedRequest,
+  adminStatusTone,
   buildUnifiedRequests,
   emptyValueFallback,
   filterUnifiedRequests,
   isAgencyRequest,
+  normalizeAdminStatus,
 } from '@/app/admin/adminUnifiedRequests';
 
 type RequestTypeFilter = 'all' | 'agency' | 'traveler';
 type RequestState = AdminRequestStatus;
 
 const states: RequestState[] = ['신규', '검토 중', '정보 보완', '가이드 탐색', '제안 완료', '매칭 확정'];
-const stateColors: Record<RequestState, string> = {
-  신규: 'bg-rose-50 text-rose-600',
-  '검토 중': 'bg-amber-50 text-amber-700',
-  '정보 보완': 'bg-orange-50 text-orange-700',
-  '가이드 탐색': 'bg-blue-50 text-blue-700',
-  '제안 완료': 'bg-violet-50 text-violet-700',
-  '매칭 확정': 'bg-emerald-50 text-emerald-700',
-};
 
 export function AdminRequestsPage() {
   const [filterType, setFilterType] = useState<RequestTypeFilter>('all');
@@ -185,8 +179,8 @@ export function AdminRequestsPage() {
                           )}
                         </td>
                         <td className="px-3 py-4">
-                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${agency ? stateColors[row.status] : 'bg-slate-100 text-slate-600'}`}>
-                            {row.status}
+                          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${adminStatusTone(row.status)}`}>
+                            {normalizeAdminStatus(row.status)}
                           </span>
                         </td>
                         <td className="pr-3">
@@ -248,7 +242,7 @@ function UnifiedRequestDetail({ request }: { request: AdminUnifiedRequest | null
         <DetailBox label="행사 일정" value={dateRange} icon={<CalendarDays className="size-4" />} />
       </div>
       <div className="mt-5 grid gap-3">
-        <DetailBox label="진행 상태" value={request.status} icon={<ChevronRight className="size-4" />} />
+        <DetailBox label="진행 상태" value={normalizeAdminStatus(request.status)} icon={<ChevronRight className="size-4" />} />
         <DetailBox label="내부 담당자" value={emptyValueFallback(request.assignee)} icon={<UserRound className="size-4" />} />
         {isAgency ? (
           <>
