@@ -70,7 +70,10 @@ export function AdminRequestsPage() {
     } else {
       setTravelerRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, status: nextStatus } : item));
     }
-    setSelected((prev) => prev && prev.id === request.id ? { ...prev, status: nextStatus } : prev);
+    setSelected((prev) => {
+      if (!prev || prev.id !== request.id) return prev;
+      return { ...prev, status: nextStatus } as AdminUnifiedRequest;
+    });
   };
 
   const optimisticAssigneeUpdate = (request: AdminUnifiedRequest, nextAssignee: string) => {
@@ -79,7 +82,10 @@ export function AdminRequestsPage() {
     } else {
       setTravelerRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, assignee: nextAssignee } : item));
     }
-    setSelected((prev) => prev && prev.id === request.id ? { ...prev, assignee: nextAssignee } : prev);
+    setSelected((prev) => {
+      if (!prev || prev.id !== request.id) return prev;
+      return { ...prev, assignee: nextAssignee } as AdminUnifiedRequest;
+    });
   };
 
   return (
