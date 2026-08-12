@@ -72,7 +72,10 @@ export function AdminRequestsPage() {
     }
     setSelected((prev) => {
       if (!prev || prev.id !== request.id) return prev;
-      return { ...prev, status: nextStatus } as AdminUnifiedRequest;
+      if (isAgencyRequest(prev)) {
+        return { ...prev, status: nextStatus as AdminAgencyRequest['status'] };
+      }
+      return { ...prev, status: nextStatus };
     });
   };
 
@@ -84,7 +87,7 @@ export function AdminRequestsPage() {
     }
     setSelected((prev) => {
       if (!prev || prev.id !== request.id) return prev;
-      return { ...prev, assignee: nextAssignee } as AdminUnifiedRequest;
+      return { ...prev, assignee: nextAssignee };
     });
   };
 
