@@ -112,6 +112,31 @@ export async function updateAdminUserRole(uid: string, role: AdminRole) {
   await updateDoc(reference, { role, updatedAt });
 }
 
+export async function updateAdminUserActive(uid: string, active: boolean) {
+  const reference = doc(db, adminUsersCollection, uid);
+  const snapshot = await getDoc(reference);
+  if (!snapshot.exists()) {
+    throw new Error('ADMIN_NOT_FOUND');
+  }
+
+  const data = snapshot.data() as Record<string, unknown>;
+  const currentRole = data.role === 'superadmin' ? 'superadmin' : 'admin';
+  const currentActive = Boolean(data.active);
+  if (currentActive === active) return;
+  if (currentRole === 'superadmin' && !active) {
+    throw new Error('SUPERADMIN_DEACTIVATE_NOT_ALLOWED');
+  }
+  if (currentRole === 'superadmin' && !active) {
+    const activeSuperAdmins = await countActiveSuperAdmins();
+    if (activeSuperAdmins <= 1) {
+      throw new Error('LAST_SUPERADMIN_NOT_ALLOWED');
+    }
+  }
+
+  const updatedAt = new Date().toISOString();
+  await updateDoc(reference, { active, updatedAt });
+}
+
 export async function updateAdminRole(uid: string, role: AdminRole) {
   await updateAdminUserRole(uid, role);
 }

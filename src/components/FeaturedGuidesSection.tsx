@@ -24,11 +24,7 @@ function GuideAvatar({ photoUrl, name }: { photoUrl?: string; name: string }) {
   );
 }
 
-function Badge({ children }: { children: string }) {
-  return <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-bold text-slate-600">{children}</span>;
-}
-
-export function FeaturedGuidesSection({ guides }: { guides: readonly PublicGuideProfile[] }) {
+export function FeaturedGuidesSection({ guides, onRequestGuide }: { guides: readonly PublicGuideProfile[]; onRequestGuide?: (guide: PublicGuideProfile) => void }) {
   if (guides.length === 0) return <EmptyState />;
 
   return (
@@ -39,7 +35,7 @@ export function FeaturedGuidesSection({ guides }: { guides: readonly PublicGuide
             <GuideAvatar name={guide.name} photoUrl={guide.profilePhotoUrl} />
             <div className="min-w-0">
               <p className="truncate text-base font-bold text-ink">{guide.name}</p>
-              <p className="mt-1 text-xs font-semibold text-muted-foreground">예시 프로필</p>
+              <p className="mt-1 text-xs font-semibold text-muted-foreground">{guide.experienceRange}</p>
             </div>
             <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-coral-soft px-2 py-1 text-xs font-bold text-coral">
               <CheckCircle2 className="size-3.5" />
@@ -47,22 +43,41 @@ export function FeaturedGuidesSection({ guides }: { guides: readonly PublicGuide
             </span>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Badge>{guide.languages.join(', ')}</Badge>
-            <Badge>{guide.regions.join(', ')}</Badge>
-            <Badge>{guide.experienceRange}</Badge>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {guide.languages.map((item) => (
+              <span className="rounded-full border border-border px-2.5 py-1 text-xs font-bold" key={item}>
+                {item}
+              </span>
+            ))}
+            {guide.regions.map((item) => (
+              <span className="rounded-full border border-border px-2.5 py-1 text-xs font-bold" key={item}>
+                {item}
+              </span>
+            ))}
           </div>
 
-          <p className="mt-5 line-clamp-2 text-sm leading-6 text-muted-foreground">{guide.introduction}</p>
-          <div className="mt-auto grid gap-2 pt-5 text-xs font-semibold text-slate-500">
-            <span className="flex items-center gap-2">
-              <MapPin className="size-4 text-coral" />
-              주요 지역과 언어를 함께 확인
-            </span>
-            <span className="flex items-center gap-2">
-              <Award className="size-4 text-coral" />
-              추천 사유는 운영 검토 후 안내
-            </span>
+          <p className="mt-4 line-clamp-2 text-sm leading-6 text-muted-foreground">{guide.introduction}</p>
+
+          <div className="mt-auto flex flex-col gap-2 pt-4">
+            {onRequestGuide ? (
+              <button
+                className="w-full rounded-xl bg-coral py-2.5 text-center text-sm font-bold text-coral-foreground transition hover:bg-coral/90"
+                onClick={() => onRequestGuide(guide)}
+                type="button"
+              >
+                이 가이드로 매칭 요청
+              </button>
+            ) : null}
+            <div className="grid gap-2 text-xs font-semibold text-slate-500">
+              <span className="flex items-center gap-2">
+                <MapPin className="size-4 text-coral" />
+                주요 지역과 언어를 함께 확인
+              </span>
+              <span className="flex items-center gap-2">
+                <Award className="size-4 text-coral" />
+                추천 사유는 운영 검토 후 안내
+              </span>
+            </div>
           </div>
         </article>
       ))}
