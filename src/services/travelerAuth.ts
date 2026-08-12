@@ -1,6 +1,7 @@
-import { browserSessionPersistence, setPersistence, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
+import { browserSessionPersistence, onAuthStateChanged, setPersistence, signInWithEmailAndPassword, signOut, type User } from 'firebase/auth';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
 
 import { auth, db } from '@/lib/firebase';
 
@@ -61,4 +62,31 @@ export function isEligibleTravelerUser(user: User | null): user is User {
 
 export function signOutTraveler() {
   return signOut(auth);
+}
+
+export function useTravelerUser() {
+  const [profile, setProfile] = useState<TravelerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (!isEligibleTravelerUser(user)) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+      void getDoc(doc(db, travelerUsersCollection, user.uid)).then((snapshot) => {
+        if (!snapshot.exists()) {
+          setProfile(null);
+        } else {
+          const data = snapshot.data() as TravelerProfile;
+          setProfile({ ...data, ownerUid: user.uid });
+        }
+        setLoading(false);
+      });
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return { profile, loading, uid: profile?.ownerUid ?? null };
 }

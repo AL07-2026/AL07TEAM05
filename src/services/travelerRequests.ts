@@ -51,6 +51,11 @@ export function mapTravelerRequestStatus(status: unknown): string {
   return '접수';
 }
 
+export async function getTravelerRequests(): Promise<TravelerRequest[]> {
+  const snapshot = await getDocs(query(collection(db, travelerRequestsCollection), orderBy('createdAt', 'desc'), limit(200)));
+  return snapshot.docs.map((doc) => mapTravelerRequest(doc.id, doc.data() as Record<string, unknown>));
+}
+
 function mapPublicGuideProfile(id: string, data: Record<string, unknown>): PublicGuideProfile {
   const coerce = (value: unknown) => (typeof value === 'string' ? value : '');
   return {

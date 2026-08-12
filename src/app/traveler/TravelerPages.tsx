@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 
 import { getPublicGuideProfiles } from '@/services/publicGuideProfiles';
 import { createTravelerRequest, listenTravelerRequests } from '@/services/travelerRequests';
-import { signInTraveler, signUpTraveler } from '@/services/travelerAuth';
+import { signInTraveler, signUpTraveler, useTravelerUser } from '@/services/travelerAuth';
 import type { PublicGuideProfile, TravelerRequest } from '@/types';
 
 const languageOptions = ['영어', '일본어', '중국어', '베트남어', '태국어', '스페인어', '기타'];
@@ -254,6 +254,7 @@ export function TravelerGuideDetailPage() {
 
 export function TravelerRequestPage() {
   const navigate = useNavigate();
+  const { profile, loading: profileLoading } = useTravelerUser();
   const preselected = useMemo(() => {
     const state = window.history.state as { state?: { selectedGuideId?: string; selectedGuideName?: string } } | null;
     return state?.state ?? null;
@@ -277,6 +278,24 @@ export function TravelerRequestPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  if (profileLoading) {
+    return (
+      <Shell eyebrow="개인 여행자 매칭 요청" title="로그인 상태를 확인하는 중입니다." description="잠시만 기다려 주세요.">
+        <EmptyState title="불러오는 중" body="여행자 정보를 확인하고 있습니다." />
+      </Shell>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Shell eyebrow="개인 여행자 매칭 요청" title="로그인이 필요합니다." description="매칭 요청을 작성하려면 먼저 로그인해 주세요.">
+        <Link className="mt-6 inline-flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-coral-foreground transition hover:bg-coral/90" to="/traveler/login">
+          로그인하기
+        </Link>
+      </Shell>
+    );
+  }
+
   function updateField(name: string, value: string | boolean) {
     setForm((current) => ({ ...current, [name]: value }));
     setErrors((current) => ({ ...current, [name]: '' }));
@@ -299,7 +318,7 @@ export function TravelerRequestPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isSubmitting) return;
+    if (isSubmitting || !profile) return;
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length > 0) return;
@@ -307,7 +326,7 @@ export function TravelerRequestPage() {
     setIsSubmitting(true);
     try {
       await createTravelerRequest({
-        ownerUid: 'traveler-demo',
+        ownerUid: profile.ownerUid,
         travelerName: form.travelerName,
         contactPhone: form.contactPhone,
         selectedGuideId: form.selectedGuideId || undefined,
@@ -331,7 +350,7 @@ export function TravelerRequestPage() {
   if (isSuccess) {
     return (
       <Shell eyebrow="매칭 요청" title="요청이 접수되었습니다." description="운영팀이 검토 후 적합한 가이드가 있으면 연락드립니다.">
-        <Link className={['mt-6 inline-flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-coral-foreground', 'transition hover:bg-coral/90'].join(' ')} to="/traveler/my">
+        <Link className={['mt-6 inline-flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-coral-foreground', 'transition hover:bg-coral/90'].join(' ')} to="/traveler/my-requests">
           내 요청 보기
         </Link>
       </Shell>
@@ -433,26 +452,42 @@ export function TravelerRequestPage() {
 }
 
 export function TravelerMyRequestsPage() {
+  const { profile, loading: profileLoading } = useTravelerUser();
   const [requests, setRequests] = useState<TravelerRequest[]>([]);
   const [selected, setSelected] = useState<TravelerRequest | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = listenTravelerRequests('traveler-demo', (items) => {
+    if (!profile?.ownerUid) return;
+    const unsubscribe = listenTravelerRequests(profile.ownerUid, (items) => {
       setRequests(items);
-      setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [profile?.ownerUid]);
+
+  if (profileLoading) {
+    return (
+      <Shell eyebrow="개인 여행자" title="내 매칭 요청" description="접수한 요청의 상태와 진행 상황을 확인하세요.">
+        <EmptyState title="불러오는 중" body="로그인 상태를 확인하고 있습니다." />
+      </Shell>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Shell eyebrow="개인 여행자" title="로그인이 필요합니다." description="내 요청을 보려면 먼저 로그인해 주세요.">
+        <Link className="mt-6 inline-flex items-center gap-2 rounded-xl bg-coral px-5 py-3 text-sm font-bold text-coral-foreground transition hover:bg-coral/90" to="/traveler/login">
+          로그인하기
+        </Link>
+      </Shell>
+    );
+  }
 
   return (
     <div>
       <Shell eyebrow="개인 여행자" title="내 매칭 요청" description="접수한 요청의 상태와 진행 상황을 확인하세요.">
         <div className="mt-8 grid gap-5 lg:grid-cols-[1.2fr_.8fr]">
           <section className="space-y-4">
-            {isLoading ? (
-              <EmptyState title="불러오는 중" body="요청 목록을 불러오고 있습니다." />
-            ) : requests.length === 0 ? (
+            {requests.length === 0 ? (
               <EmptyState title="접수된 요청이 없습니다." body="새 매칭 요청을 작성해 보세요." />
             ) : (
               requests.map((request) => (
@@ -535,7 +570,7 @@ export function TravelerLoginPage() {
     setIsSubmitting(true);
     try {
       await signInTraveler(email, password);
-      void navigate('/traveler/my');
+      void navigate('/traveler/my-requests');
     } catch {
       setError('로그인 정보를 확인해 주세요.');
     } finally {
@@ -587,7 +622,7 @@ export function TravelerRegisterPage() {
     setIsSubmitting(true);
     try {
       await signUpTraveler(displayName, email, password, phone);
-      void navigate('/traveler/my');
+      void navigate('/traveler/my-requests');
     } catch {
       setError('회원가입에 실패했습니다. 입력값을 확인해 주세요.');
     } finally {
@@ -631,3 +666,4 @@ export function TravelerRegisterPage() {
     </main>
   );
 }
+
