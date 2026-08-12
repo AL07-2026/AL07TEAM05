@@ -25,14 +25,18 @@ export type AdminRequestStatus =
 export type AdminAgencyRequest = {
   id: string;
   company: string;
+  companyDescription: string;
   manager: string;
   phone: string;
   email: string;
+  preferredContactMethod: string;
   event: string;
+  eventType: string;
   region: string;
   date: string;
   startDate?: string;
   endDate?: string;
+  participantCount: string;
   languages: string[];
   guides: number;
   urgency: '긴급' | '보통';
@@ -40,6 +44,12 @@ export type AdminAgencyRequest = {
   assignee: string;
   task: string;
   budget: string;
+  certificatePriority: string;
+  sourcingExperience: string;
+  preferredExperience: string;
+  similarEventExperience: string;
+  drivingRequired: string;
+  additionalNotes: string;
   createdAt: string;
 };
 
@@ -132,14 +142,18 @@ function toAdminAgencyRequest(id: string, data: Record<string, unknown>): AdminA
   return {
     id,
     company: readString(data, 'companyName', '신규 여행사'),
+    companyDescription: readString(data, 'companyDescription'),
     manager: readString(data, 'contactName'),
     phone: readString(data, 'contactPhone'),
     email: readString(data, 'contactEmail'),
+    preferredContactMethod: readString(data, 'preferredContactMethod'),
     event: readString(data, 'eventName', '가이드 매칭 요청'),
+    eventType: readString(data, 'eventType'),
     region: readString(data, 'region'),
     date: formatDateRange(startDate || undefined, endDate || undefined),
     startDate: startDate || undefined,
     endDate: endDate || undefined,
+    participantCount: readString(data, 'participantCount'),
     languages: readStringArray(data, 'languages'),
     guides: readGuideCount(data),
     urgency: mapAgencyRequestUrgency(data.urgency),
@@ -147,8 +161,19 @@ function toAdminAgencyRequest(id: string, data: Record<string, unknown>): AdminA
     assignee: readString(data, 'assignee', '미지정'),
     task: readString(data, 'taskDescription', '상세 업무 미입력'),
     budget: readString(data, 'budget', '협의'),
+    certificatePriority: readString(data, 'certificatePriority'),
+    sourcingExperience: readString(data, 'sourcingExperience'),
+    preferredExperience: readString(data, 'preferredExperience'),
+    similarEventExperience: readString(data, 'similarEventExperience'),
+    drivingRequired: readString(data, 'drivingRequired'),
+    additionalNotes: readString(data, 'additionalNotes'),
     createdAt: formatCreatedAt(data.createdAt),
   };
+}
+
+/** A stable, URL-safe identifier for a travel agency name. */
+export function agencyPathId(company: string) {
+  return encodeURIComponent(company.trim());
 }
 
 export async function getAgencyRequests() {
