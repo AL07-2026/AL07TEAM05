@@ -230,6 +230,7 @@ function NavLink({ children, to }: { children: ReactNode; to: string }) {
 }
 
 function HomePage() {
+  const navigate = useNavigate();
   const [guides, setGuides] = useState<readonly PublicGuideProfile[]>([]);
 
   useEffect(() => {
@@ -254,15 +255,18 @@ function HomePage() {
               description="실제 운영에서는 검증된 가이드 데이터가 연결됩니다. 지금은 카드 구조와 정보 위계를 먼저 확인할 수 있습니다."
             />
           </div>
-        </div>
-        <FeaturedGuidesSection guides={guides} />
-        <section className="mx-auto max-w-6xl px-4 sm:px-6">
-          <p className="mt-2 text-center text-sm font-semibold text-slate-600">관심 있는 가이드가 있으신가요?</p>
-          <Link className={secondaryButtonClass + ' mx-auto mt-3 w-fit'} to="/agency/request">
-            이 가이드로 매칭 요청
+          <Link className={secondaryButtonClass + ' w-fit'} to="/guide/register">
+            가이드 등록하기
           </Link>
-        </section>
-        <p className="mt-4 text-center text-xs text-muted-foreground">현재는 예시 프로필이며, 검증 데이터 연결 후 자동으로 노출됩니다.</p>
+        </div>
+        <FeaturedGuidesSection
+          guides={guides}
+          onRequestGuide={(guide) =>
+            navigate('/agency/request', {
+              state: { preferredGuideId: guide.id, preferredGuideName: guide.name },
+            })
+          }
+        />
       </section>
     </div>
   );

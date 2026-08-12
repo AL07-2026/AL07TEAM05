@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, UserRound } from 'lucide-react';
 
-import { getAdminUsers, updateAdminUserRole } from '@/services/adminAuth';
+import { getAdminUsers, updateAdminUserRole, updateAdminUserActive } from '@/services/adminAuth';
 import { createAuditLog, listenAuditLogs } from '@/services/adminAuth';
 import type { AdminRole, AdminUser, PlatformAuditLog } from '@/types';
 
@@ -89,18 +89,14 @@ export function SuperadminUsersPage({ currentUser }: { currentUser: { uid: strin
     const target = users.find((item) => item.uid === uid);
     if (!target) return;
 
-    if (target.role === 'superadmin' && !nextActive) {
-      alert('superadmin을 비활성화할 수 없습니다.');
+    try {
+      await updateAdminUserActive(uid, nextActive);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '변경할 수 없습니다.';
+      alert(message);
       return;
     }
 
-    const activeSuperAdmins = users.filter((item) => item.role === 'superadmin' && item.active && item.uid !== uid);
-    if (target.role === 'superadmin' && nextActive === false && activeSuperAdmins.length === 0) {
-      alert('마지막 superadmin은 비활성화할 수 없습니다.');
-      return;
-    }
-
-    await updateAdminUserRole(uid, target.active ? 'admin' : 'superadmin');
     await createAuditLog({
       actorUid: currentUser.uid,
       actorRole: currentUser.role,
