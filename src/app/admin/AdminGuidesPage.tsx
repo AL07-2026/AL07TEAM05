@@ -303,7 +303,17 @@ export function AdminGuidesPage() {
                             {guide.name.slice(0, 1)}
                           </span>
                           <div>
-                            <div className="font-semibold">{guide.name}</div>
+                            <button
+                              type="button"
+                              className="text-left font-semibold hover:text-rose-500 hover:underline"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setSelected(guide);
+                              }}
+                              aria-label={`${guide.name} 가이드 검증 상세 보기`}
+                            >
+                              {guide.name}
+                            </button>
                             <p className="mt-1 text-xs text-slate-400">{guide.experienceRange}</p>
                           </div>
                         </div>
@@ -438,6 +448,9 @@ function GuideDrawer({
 
           <section className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900">검증 작업</h3>
+            <div className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${REVIEW_STATUS_BADGE[guide.reviewStatus].tone}`}>
+              현재 상태: {REVIEW_STATUS_BADGE[guide.reviewStatus].label}
+            </div>
             <label className="block text-xs text-slate-500">
               관리자 메모
               <textarea
