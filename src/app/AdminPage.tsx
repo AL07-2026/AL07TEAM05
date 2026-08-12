@@ -27,6 +27,7 @@ import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
 import { AdminTravelerRequestPage } from '@/app/admin/AdminTravelerRequestPage';
 import { getAgencyRequests, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
 import { getTravelerRequests } from '@/services/travelerRequests';
+import { normalizeAdminStatus } from '@/app/admin/adminUnifiedRequests';
 import type { AdminRole, TravelerRequest } from '@/types';
 
 type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings' | 'traveler-request-detail';
@@ -85,11 +86,11 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
   }, []);
   const filtered = requests.filter((request) => {
     const matchesQuery = `${request.company} ${request.event} ${request.id}`.toLowerCase().includes(query.toLowerCase());
-    return matchesQuery && (status === '전체 상태' || request.status === status);
+    return matchesQuery && (status === '전체 상태' || normalizeAdminStatus(request.status) === status);
   });
-  const newRequestCount = [...requests, ...travelerRequests].filter((request) => request.status === '신규').length;
-  const reviewingCount = [...requests, ...travelerRequests].filter((request) => request.status === '검토 중').length;
-  const matchingCount = [...requests, ...travelerRequests].filter((request) => ['가이드 탐색', '제안 완료'].includes(request.status)).length;
+  const newRequestCount = [...requests, ...travelerRequests].filter((request) => normalizeAdminStatus(request.status) === '신규').length;
+  const reviewingCount = [...requests, ...travelerRequests].filter((request) => normalizeAdminStatus(request.status) === '검토 중').length;
+  const matchingCount = [...requests, ...travelerRequests].filter((request) => ['가이드 탐색', '제안 완료'].includes(normalizeAdminStatus(request.status))).length;
   const totalRequestCount = requests.length + travelerRequests.length;
 
   return (

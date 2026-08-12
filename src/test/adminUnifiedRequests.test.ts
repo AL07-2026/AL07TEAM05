@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TravelerRequest } from '@/types';
 import type { AdminAgencyRequest } from '@/services/agencyRequests';
-import { buildUnifiedRequests, filterUnifiedRequests } from '@/app/admin/adminUnifiedRequests';
+import { adminStatusTone, buildUnifiedRequests, filterUnifiedRequests, normalizeAdminStatus, toTravelerUnified } from '@/app/admin/adminUnifiedRequests';
 
 const agencyRequest: AdminAgencyRequest = {
   id: 'agency-1',
@@ -84,5 +84,40 @@ describe('admin unified requests', () => {
 
   it('computes dashboard total count from both collections', () => {
     expect([agencyRequest, travelerRequest].length).toBe(2);
+  });
+
+  it('normalizes traveler submitted/접수 to admin label 신규', () => {
+    expect(normalizeAdminStatus('submitted')).toBe('신규');
+    expect(normalizeAdminStatus('접수')).toBe('신규');
+    expect(normalizeAdminStatus('신규')).toBe('신규');
+  });
+
+  it('uses identical tone for agency 신규 and traveler submitted', () => {
+    expect(adminStatusTone('신규')).toBe(adminStatusTone('submitted'));
+    expect(adminStatusTone('접수')).toBe(adminStatusTone('submitted'));
+  });
+
+  it('includes both agency 신규 and traveler submitted in admin 신규 filter', () => {
+    const result = buildUnifiedRequests(
+      [{ ...agencyRequest, status: '신규' }],
+      [{ ...travelerRequest, id: 'traveler-new', status: 'submitted' }],
+      'all',
+    );
+    const filtered = filterUnifiedRequests(result, '', '신규');
+    expect(filtered.map((item) => item.id).sort()).toEqual(['agency-1', 'traveler-new']);
+  });
+
+  it('directly filters traveler submitted as 신규', () => {
+    const unified = toTravelerUnified({ ...travelerRequest, id: 'traveler-new', status: 'submitted' });
+    const filtered = filterUnifiedRequests([unified], '', '신규');
+    expect(filtered.map((item) => item.id)).toEqual(['traveler-new']);
+  });
+
+  it('counts both initial statuses as 신규 in dashboard aggregation', () => {
+    const requests = [
+      { ...agencyRequest, status: '신규' },
+      { ...travelerRequest, status: 'submitted' },
+    ] as Array<AdminAgencyRequest | TravelerRequest>;
+    expect(requests.filter((request) => normalizeAdminStatus(request.status) === '신규').length).toBe(2);
   });
 });
