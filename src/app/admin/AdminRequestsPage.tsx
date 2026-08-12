@@ -64,9 +64,9 @@ export function AdminRequestsPage() {
 
   const activeSelected = selected && filtered.some((row) => row.id === selected.id) ? selected : filtered[0] ?? null;
 
-  const optimisticStatusUpdate = (request: AdminUnifiedRequest, nextStatus: RequestState) => {
+  const optimisticStatusUpdate = (request: AdminUnifiedRequest, nextStatus: string) => {
     if (isAgencyRequest(request)) {
-      setAgencyRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, status: nextStatus } : item));
+      setAgencyRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, status: nextStatus as AdminAgencyRequest['status'] } : item));
     } else {
       setTravelerRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, status: nextStatus } : item));
     }
