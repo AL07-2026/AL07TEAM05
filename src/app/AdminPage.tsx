@@ -25,6 +25,7 @@ import { AdminPartnersPage } from '@/app/admin/AdminPartnersPage';
 import { AdminOperationsPage } from '@/app/admin/AdminOperationsPage';
 import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
 import { getAgencyRequests, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
+import type { AdminRole } from '@/types';
 
 type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings';
 
@@ -33,6 +34,7 @@ type AdminRequest = AdminAgencyRequest;
 
 type AdminPageProps = {
   adminDisplayName?: string;
+  adminRole?: AdminRole;
   onSignOut?: () => void | Promise<void>;
 };
 

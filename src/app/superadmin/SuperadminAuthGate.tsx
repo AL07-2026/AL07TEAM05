@@ -2,17 +2,18 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
-import { AdminPage } from '@/app/AdminPage';
-import { AdminLoginPage } from '@/app/admin/AdminLoginPage';
 import { auth } from '@/lib/firebase';
 import { adminAccessDeniedMessage, checkAdminAccess, isEligibleAdminUser, signOutAdmin, type AdminAccess } from '@/services/adminAuth';
+import { SuperadminDashboardPage } from '@/app/superadmin/SuperadminPage';
+import { SuperadminLoginPage } from '@/app/superadmin/SuperadminLoginPage';
+import type { AdminRole } from '@/types';
 
 type GateState =
   | { status: 'checking' }
   | { status: 'unauthenticated'; error?: string }
-  | { status: 'authorized'; admin: AdminAccess };
+  | { status: 'authorized'; admin: AdminAccess & { role: AdminRole } };
 
-export function AdminAuthGate() {
+export function SuperadminAuthGate() {
   const [gate, setGate] = useState<GateState>({ status: 'checking' });
 
   useEffect(() => {
@@ -28,13 +29,19 @@ export function AdminAuthGate() {
       void checkAdminAccess(user.uid)
         .then((access) => {
           if (ignore) return;
-          if (access) {
-            setGate({ status: 'authorized', admin: access });
+          if (!access) {
+            void signOutAdmin();
+            setGate({ status: 'unauthenticated', error: adminAccessDeniedMessage });
             return;
           }
 
-          void signOutAdmin();
-          setGate({ status: 'unauthenticated', error: adminAccessDeniedMessage });
+          if (access.role !== 'superadmin') {
+            void signOutAdmin();
+            setGate({ status: 'unauthenticated', error: 'Super Admin 권한이 없습니다.' });
+            return;
+          }
+
+          setGate({ status: 'authorized', admin: access });
         })
         .catch(() => {
           if (ignore) return;
@@ -59,8 +66,8 @@ export function AdminAuthGate() {
   }
 
   if (gate.status === 'unauthenticated') {
-    return <AdminLoginPage error={gate.error} onSignedIn={(admin) => setGate({ status: 'authorized', admin })} />;
+    return <SuperadminLoginPage error={gate.error} onSignedIn={(access) => setGate({ status: 'authorized', admin: access })} />;
   }
 
-  return <AdminPage adminDisplayName={gate.admin.displayName} adminRole={gate.admin.role} onSignOut={signOutAdmin} />;
+  return <SuperadminDashboardPage onSignOut={signOutAdmin} />;
 }
