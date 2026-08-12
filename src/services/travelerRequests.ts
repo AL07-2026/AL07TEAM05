@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, Timestamp, where } from 'firebase/firestore';
+import { addDoc, collection, doc, getDocs, limit, onSnapshot, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 
 import { db } from '@/lib/firebase';
 import type { PublicGuideProfile, TravelerRequest } from '@/types';
@@ -123,4 +123,20 @@ function mapTravelerRequest(id: string, data: Record<string, unknown>): Traveler
     createdAt: typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString(),
     updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString(),
   };
+}
+
+const TRAVELER_ALLOWED_OPERATIONS_FIELDS = new Set(['status', 'assignee', 'updatedAt']);
+
+export async function updateTravelerRequestOperations({ requestId, status, assignee }: { requestId: string; status?: string; assignee?: string | null }) {
+  const reference = doc(db, travelerRequestsCollection, requestId);
+  const payload: Record<string, unknown> = { updatedAt: serverTimestamp() };
+
+  if (typeof status === 'string' && status.trim()) payload.status = status.trim();
+  if (assignee !== undefined) payload.assignee = assignee;
+
+  const allowedKeys = Object.keys(payload).filter((key) => TRAVELER_ALLOWED_OPERATIONS_FIELDS.has(key));
+  if (!allowedKeys.length) return;
+
+  const updatePayload = Object.fromEntries(allowedKeys.map((key) => [key, payload[key]])) as Record<string, unknown>;
+  await updateDoc(reference, updatePayload);
 }

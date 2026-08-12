@@ -1,9 +1,9 @@
 import { CalendarDays, ChevronRight, Filter, MapPin, MessageSquareText, Search, UserRound } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
-import { getAgencyRequests, formatDateRange, formatGuideRequirement, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
-import { getTravelerRequests } from '@/services/travelerRequests';
-import type { TravelerRequest } from '@/types';
+import { getAgencyRequests, formatDateRange, formatGuideRequirement, updateAgencyRequestOperations, type AdminAgencyRequest } from '@/services/agencyRequests';
+import { getTravelerRequests, updateTravelerRequestOperations } from '@/services/travelerRequests';
+import { createAuditLog, getCurrentAdminAccess } from '@/services/adminAuth';
 import {
   type AdminUnifiedRequest,
   adminStatusTone,
@@ -13,11 +13,11 @@ import {
   isAgencyRequest,
   normalizeAdminStatus,
 } from '@/app/admin/adminUnifiedRequests';
+import type { TravelerRequest } from '@/types';
 
+const REQUEST_STATES = ['신규', '검토 중', '정보 보완', '가이드 탐색', '제안 완료', '매칭 확정'] as const;
+type RequestState = typeof REQUEST_STATES[number];
 type RequestTypeFilter = 'all' | 'agency' | 'traveler';
-type RequestState = AdminRequestStatus;
-
-const states: RequestState[] = ['신규', '검토 중', '정보 보완', '가이드 탐색', '제안 완료', '매칭 확정'];
 
 export function AdminRequestsPage() {
   const [filterType, setFilterType] = useState<RequestTypeFilter>('all');
@@ -64,6 +64,33 @@ export function AdminRequestsPage() {
 
   const activeSelected = selected && filtered.some((row) => row.id === selected.id) ? selected : filtered[0] ?? null;
 
+  const optimisticStatusUpdate = (request: AdminUnifiedRequest, nextStatus: string) => {
+    if (isAgencyRequest(request)) {
+      setAgencyRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, status: nextStatus as AdminAgencyRequest['status'] } : item));
+    } else {
+      setTravelerRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, status: nextStatus } : item));
+    }
+    setSelected((prev) => {
+      if (!prev || prev.id !== request.id) return prev;
+      if (isAgencyRequest(prev)) {
+        return { ...prev, status: nextStatus as AdminAgencyRequest['status'] };
+      }
+      return { ...prev, status: nextStatus };
+    });
+  };
+
+  const optimisticAssigneeUpdate = (request: AdminUnifiedRequest, nextAssignee: string) => {
+    if (isAgencyRequest(request)) {
+      setAgencyRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, assignee: nextAssignee } : item));
+    } else {
+      setTravelerRequests((prev) => prev.map((item) => item.id === request.id ? { ...item, assignee: nextAssignee } : item));
+    }
+    setSelected((prev) => {
+      if (!prev || prev.id !== request.id) return prev;
+      return { ...prev, assignee: nextAssignee };
+    });
+  };
+
   return (
     <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
@@ -72,7 +99,7 @@ export function AdminRequestsPage() {
           <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">매칭 요청 조회</h1>
           <p className="mt-2 text-sm text-slate-500">접수된 요청을 빠르게 훑고 필요한 정보를 확인하세요.</p>
         </div>
-        <span className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500">현재 조회 전용</span>
+        <span className="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500">운영 지원</span>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <FilterButton label={`전체 ${totalCount}`} active={filterType === 'all'} onClick={() => { setFilterType('all'); setSelected(null); }} />
@@ -90,8 +117,8 @@ export function AdminRequestsPage() {
               <Filter className="size-4 text-slate-400" />
               <select className="bg-transparent outline-none" value={status} onChange={(event) => setStatus(event.target.value)}>
                 <option>전체</option>
-                {states.map((item) => (
-                  <option key={item}>{item}</option>
+                {REQUEST_STATES.map((item) => (
+                  <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </label>
@@ -195,7 +222,11 @@ export function AdminRequestsPage() {
           </div>
           <div className="border-t border-slate-100 p-4 text-xs text-slate-400">검색 결과 {filtered.length}건</div>
         </section>
-        <UnifiedRequestDetail request={activeSelected} />
+        <UnifiedRequestDetail
+          request={activeSelected}
+          onStatusUpdated={optimisticStatusUpdate}
+          onAssigneeUpdated={optimisticAssigneeUpdate}
+        />
       </div>
     </main>
   );
@@ -213,7 +244,11 @@ function FilterButton({ label, active, onClick }: { label: string; active: boole
   );
 }
 
-function UnifiedRequestDetail({ request }: { request: AdminUnifiedRequest | null }) {
+function UnifiedRequestDetail({ request, onStatusUpdated, onAssigneeUpdated }: {
+  request: AdminUnifiedRequest | null;
+  onStatusUpdated?: (request: AdminUnifiedRequest, value: string) => void;
+  onAssigneeUpdated?: (request: AdminUnifiedRequest, value: string) => void;
+}) {
   if (!request) {
     return <aside className="bg-slate-50/40 p-5 text-sm text-slate-400 xl:p-6">선택할 매칭 요청이 없습니다.</aside>;
   }
@@ -242,8 +277,59 @@ function UnifiedRequestDetail({ request }: { request: AdminUnifiedRequest | null
         <DetailBox label="행사 일정" value={dateRange} icon={<CalendarDays className="size-4" />} />
       </div>
       <div className="mt-5 grid gap-3">
-        <DetailBox label="진행 상태" value={normalizeAdminStatus(request.status)} icon={<ChevronRight className="size-4" />} />
-        <DetailBox label="내부 담당자" value={emptyValueFallback(request.assignee)} icon={<UserRound className="size-4" />} />
+        <EditableField
+          label="진행 상태"
+          icon={<ChevronRight className="size-4" />}
+          value={normalizeAdminStatus(request.status)}
+          options={REQUEST_STATES}
+          onSave={async (value) => {
+            const admin = await getCurrentAdminAccess();
+            if (isAgency) {
+              await updateAgencyRequestOperations({ requestId: request.id, status: value });
+            } else {
+              await updateTravelerRequestOperations({ requestId: request.id, status: value });
+            }
+            onStatusUpdated?.(request, value);
+            if (admin) {
+              await createAuditLog({
+                actorUid: admin.uid,
+                actorRole: admin.role,
+                action: 'request_status_updated',
+                targetType: isAgency ? 'agencyRequest' : 'travelerRequest',
+                targetId: request.id,
+                before: { status: request.status },
+                after: { status: value },
+                createdAt: new Date().toISOString(),
+              });
+            }
+          }}
+        />
+        <AssigneeField
+          label="내부 담당자"
+          icon={<UserRound className="size-4" />}
+          value={request.assignee || '미지정'}
+          onChange={async (value) => {
+            const admin = await getCurrentAdminAccess();
+            if (isAgency) {
+              await updateAgencyRequestOperations({ requestId: request.id, assignee: value });
+            } else {
+              await updateTravelerRequestOperations({ requestId: request.id, assignee: value });
+            }
+            onAssigneeUpdated?.(request, value);
+            if (admin) {
+              await createAuditLog({
+                actorUid: admin.uid,
+                actorRole: admin.role,
+                action: 'request_assignee_updated',
+                targetType: isAgency ? 'agencyRequest' : 'travelerRequest',
+                targetId: request.id,
+                before: { assignee: request.assignee || '미지정' },
+                after: { assignee: value },
+                createdAt: new Date().toISOString(),
+              });
+            }
+          }}
+        />
         {isAgency ? (
           <>
             <DetailBox label="필요 가이드" value={guideRequirement} icon={<UserRound className="size-4" />} />
@@ -254,7 +340,7 @@ function UnifiedRequestDetail({ request }: { request: AdminUnifiedRequest | null
         ) : (
           <>
             <DetailBox label="필요 언어" value={emptyValueFallback(request.language)} icon={<MessageSquareText className="size-4" />} />
-            <DetailBox label="연락처" value={emptyValueFallback(request.contactPhone)} icon={<UserRound className="size-4" />} />
+            <DetailBox label="연락처" value={emptyValueFallback(request.contactPhone)} icon={<MessageSquareText className="size-4" />} />
             {request.selectedGuideName && (
               <DetailBox label="선택 가이드" value={emptyValueFallback(request.selectedGuideName)} icon={<UserRound className="size-4" />} />
             )}
@@ -281,7 +367,7 @@ function UnifiedRequestDetail({ request }: { request: AdminUnifiedRequest | null
           <p className="mt-2 rounded-xl bg-white p-4 text-sm leading-6 text-slate-600 ring-1 ring-slate-200">{emptyValueFallback(request.requestDetails)}</p>
         </div>
       )}
-      <p className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-200">현재 화면은 조회 전용입니다. 상태 저장과 담당자 배정은 다음 단계에서 지원됩니다.</p>
+      <p className="mt-3 rounded-xl bg-white p-3 text-xs leading-5 text-slate-500 ring-1 ring-slate-200">상태와 담당자만 변경할 수 있습니다.</p>
     </aside>
   );
 }
@@ -300,4 +386,120 @@ function DetailBox({ label, value, icon }: { label: string; value: string; icon:
 
 function Label({ children }: { children: string }) {
   return <p className="text-xs font-bold text-slate-500">{children}</p>;
+}
+
+function EditableField({ label, icon, value, options, onSave }: { label: string; icon: ReactNode; value: string; options: readonly RequestState[]; onSave: (value: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <span className="flex items-center gap-1.5 text-[11px] text-slate-400">{icon}{label}</span>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${adminStatusTone(value)}`}>{value}</span>
+        <button type="button" className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" onClick={() => setOpen((prev) => !prev)}>
+          {open ? '닫기' : '변경'}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <select
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+            value={value}
+            onChange={(event) => {
+              setError(null);
+              const next = event.target.value;
+              if (next === value) {
+                setOpen(false);
+                return;
+              }
+              setSaving(true);
+              void (async () => {
+                try {
+                  await onSave(next);
+                } catch (caughtError) {
+                  const message = caughtError instanceof Error ? caughtError.message : '저장에 실패했습니다.';
+                  setError(message);
+                  return;
+                } finally {
+                  setSaving(false);
+                }
+                setOpen(false);
+              })();
+            }}
+            disabled={saving}
+          >
+            {options.map((option) => (
+              <option key={option} value={option}>{option}</option>
+            ))}
+          </select>
+          {saving && <p className="text-xs text-slate-400">저장 중...</p>}
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+          <p className="text-[11px] text-slate-400">상태 변경은 즉시 반영되며, 새로고침 후에도 유지됩니다.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AssigneeField({ label, icon, value, onChange }: { label: string; icon: ReactNode; value: string; onChange: (value: string) => Promise<void> }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentAdmin, setCurrentAdmin] = useState<{ displayName: string } | null>(null);
+
+  useEffect(() => {
+    void getCurrentAdminAccess().then((admin) => {
+      if (admin) setCurrentAdmin({ displayName: admin.displayName });
+    });
+  }, []);
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <span className="flex items-center gap-1.5 text-[11px] text-slate-400">{icon}{label}</span>
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <span className="text-sm font-semibold">{value}</span>
+        <button type="button" className="rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600" onClick={() => setOpen((prev) => !prev)}>
+          {open ? '닫기' : '변경'}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 space-y-2">
+          <select
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+            value={value}
+            onChange={(event) => {
+              setError(null);
+              const next = event.target.value;
+              if (next === value) {
+                setOpen(false);
+                return;
+              }
+              setSaving(true);
+              void (async () => {
+                try {
+                  await onChange(next);
+                } catch (caughtError) {
+                  const message = caughtError instanceof Error ? caughtError.message : '저장에 실패했습니다.';
+                  setError(message);
+                  return;
+                } finally {
+                  setSaving(false);
+                }
+                setOpen(false);
+              })();
+            }}
+            disabled={saving}
+          >
+            <option value="미지정">미지정</option>
+            {currentAdmin ? <option value={currentAdmin.displayName}>나에게 배정 ({currentAdmin.displayName})</option> : null}
+          </select>
+          {saving && <p className="text-xs text-slate-400">저장 중...</p>}
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+          <p className="text-[11px] text-slate-400">현재 관리자에게만 빠르게 배정할 수 있습니다.</p>
+        </div>
+      )}
+    </div>
+  );
 }
