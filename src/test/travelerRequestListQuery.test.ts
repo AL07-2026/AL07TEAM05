@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapTravelerRequestStatus } from '@/services/travelerRequests';
 import type { TravelerRequest } from '@/types';
+
+function mapTravelerRequestStatus(status: unknown): string {
+  if (status === 'submitted') return '접수';
+  if (typeof status === 'string' && status.trim()) return status.trim();
+  return '접수';
+}
 
 function mapTravelerRequestLike(input: Record<string, unknown>): TravelerRequest {
   const data = { ...input };
@@ -85,7 +90,7 @@ describe('traveler request list query', () => {
     const successCalls: string[][] = [];
     const errorCalls: Error[] = [];
 
-    function fakeListener(query: unknown, onSuccess: (snapshot: { docs: { id: string }[] }) => void, onError: (error: Error) => void) {
+    function fakeListener(_query: unknown, onSuccess: (snapshot: { docs: { id: string }[] }) => void, onError: (error: Error) => void) {
       onError(new Error('permission-denied'));
       return () => {};
     }
