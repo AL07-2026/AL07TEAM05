@@ -26,7 +26,8 @@ import { AdminOperationsPage } from '@/app/admin/AdminOperationsPage';
 import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
 import { AdminTravelerRequestPage } from '@/app/admin/AdminTravelerRequestPage';
 import { getAgencyRequests, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
-import type { AdminRole } from '@/types';
+import { getTravelerRequests } from '@/services/travelerRequests';
+import type { AdminRole, TravelerRequest } from '@/types';
 
 type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings' | 'traveler-request-detail';
 
@@ -65,13 +66,17 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
   const [selected, setSelected] = useState<AdminRequest | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
   const [requests, setRequests] = useState<AdminRequest[]>([]);
+  const [travelerRequests, setTravelerRequests] = useState<TravelerRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const loadRequests = () => {
     setIsLoading(true);
     setLoadError(false);
-    void getAgencyRequests()
-      .then(setRequests)
+    void Promise.all([getAgencyRequests(), getTravelerRequests()])
+      .then(([agency, traveler]) => {
+        setRequests(agency);
+        setTravelerRequests(traveler);
+      })
       .catch(() => setLoadError(true))
       .finally(() => setIsLoading(false));
   };
@@ -82,13 +87,14 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
     const matchesQuery = `${request.company} ${request.event} ${request.id}`.toLowerCase().includes(query.toLowerCase());
     return matchesQuery && (status === '전체 상태' || request.status === status);
   });
-  const newRequestCount = requests.filter((request) => request.status === '신규').length;
-  const reviewingCount = requests.filter((request) => request.status === '검토 중').length;
-  const matchingCount = requests.filter((request) => ['가이드 탐색', '제안 완료'].includes(request.status)).length;
+  const newRequestCount = [...requests, ...travelerRequests].filter((request) => request.status === '신규').length;
+  const reviewingCount = [...requests, ...travelerRequests].filter((request) => request.status === '검토 중').length;
+  const matchingCount = [...requests, ...travelerRequests].filter((request) => ['가이드 탐색', '제안 완료'].includes(request.status)).length;
+  const totalRequestCount = requests.length + travelerRequests.length;
 
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-slate-900">
-      <Sidebar activePage={activePage} requestCount={requests.length} onNavigate={setActivePage} open={mobileMenu} onClose={() => setMobileMenu(false)} />
+      <Sidebar activePage={activePage} requestCount={totalRequestCount} onNavigate={setActivePage} open={mobileMenu} onClose={() => setMobileMenu(false)} />
       <div className="lg:pl-64">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-7">
           <button className="rounded-lg p-2 text-slate-600 lg:hidden" onClick={() => setMobileMenu(true)}><Menu className="size-5" /></button>
@@ -102,7 +108,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
 
         {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'traveler-request-detail' ? <AdminTravelerRequestPage requestId={window.location.pathname.split('/').pop() || ''} /> : activePage === 'agencies' ? <AdminPartnersPage mode="agencies" /> : activePage === 'guides' ? <AdminGuidesPage /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, {adminDisplayName}님</h1><p className="mt-2 text-sm text-slate-500">현재 Firestore에서 불러온 요청 <b className="text-slate-800">{requests.length}건</b>을 조회 중입니다.</p></div>
+            <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, {adminDisplayName}님</h1><p className="mt-2 text-sm text-slate-500">현재 Firestore에서 불러온 요청 <b className="text-slate-800">{totalRequestCount}건</b>을 조회 중입니다.</p></div>
             <span className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"><Sparkles className="size-4 text-rose-500" />읽기 전용</span>
           </div>
 
@@ -110,7 +116,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
             <Metric label="신규 요청" value={newRequestCount} note="검토가 필요한 요청" tone="rose" icon={ClipboardList} />
             <Metric label="검토 중" value={reviewingCount} note="담당자 확인 단계" tone="amber" icon={Clock3} />
             <Metric label="매칭 진행" value={matchingCount} note="후보 탐색 또는 제안" tone="blue" icon={UsersRound} />
-            <Metric label="전체 요청" value={requests.length} note="Firestore 조회 기준" tone="green" icon={Sparkles} />
+            <Metric label="전체 요청" value={totalRequestCount} note="여행사 + 개인 여행자 합산" tone="green" icon={Sparkles} />
           </section>
 
           <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,.03)]">
