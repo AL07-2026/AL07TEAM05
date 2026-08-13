@@ -136,6 +136,12 @@ export function AdminGuidesPage() {
       }
 
       const profileData = profileSnap.data() as Record<string, unknown>;
+      const currentStatus = (profileData.profileStatus as string | undefined) ?? 'pending';
+      if (currentStatus === nextStatus) {
+        await loadGuides();
+        return;
+      }
+
       const now = new Date().toISOString();
       const batch = writeBatch(db);
 
@@ -163,6 +169,7 @@ export function AdminGuidesPage() {
           updatedAt: now,
         });
       } else if (nextStatus === 'needs_info') {
+        batch.update(profileRef, { profileStatus: 'needs_info', updatedAt: now });
         batch.update(registrationRef, { verificationStatus: 'needs_info', updatedAt: now });
         const publicRef = doc(db, 'publicGuideProfiles', uid);
         const publicSnap = await getDoc(publicRef);
@@ -195,7 +202,7 @@ export function AdminGuidesPage() {
       batch.set(logRef, {
         guideUid: uid,
         action: nextStatus,
-        fromStatus: profileData.profileStatus ?? 'pending',
+        fromStatus: currentStatus,
         toStatus: nextStatus,
         adminUid: 'admin',
         createdAt: now,
@@ -490,25 +497,25 @@ function GuideDrawer({
             )}
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
-                className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-70"
+                className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-60"
                 disabled={actionLoading !== null || guide.reviewStatus === 'approved' || guide.autoCheck.status === 'blocked'}
                 onClick={() => submit('approved')}
               >
                 {actionLoading === `${guide.uid}:approved` ? '처리 중...' : guide.reviewStatus === 'approved' ? '승인됨' : '승인'}
               </button>
               <button
-                className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-800 disabled:opacity-70"
-                disabled={actionLoading !== null}
+                className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-800 disabled:opacity-60"
+                disabled={actionLoading !== null || guide.reviewStatus === 'needs_info'}
                 onClick={() => submit('needs_info')}
               >
-                {actionLoading === `${guide.uid}:needs_info` ? '처리 중...' : '보완 요청'}
+                {actionLoading === `${guide.uid}:needs_info` ? '처리 중...' : guide.reviewStatus === 'needs_info' ? '보완 요청됨' : '보완 요청'}
               </button>
               <button
-                className="flex-1 rounded-xl border border-rose-200 py-3 text-sm font-semibold text-rose-700 disabled:opacity-70"
-                disabled={actionLoading !== null}
+                className="flex-1 rounded-xl border border-rose-200 py-3 text-sm font-semibold text-rose-700 disabled:opacity-60"
+                disabled={actionLoading !== null || guide.reviewStatus === 'rejected'}
                 onClick={() => submit('rejected')}
               >
-                {actionLoading === `${guide.uid}:rejected` ? '처리 중...' : '거절'}
+                {actionLoading === `${guide.uid}:rejected` ? '처리 중...' : guide.reviewStatus === 'rejected' ? '거절됨' : '거절'}
               </button>
             </div>
           </section>
