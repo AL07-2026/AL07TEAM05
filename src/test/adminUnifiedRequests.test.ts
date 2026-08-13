@@ -120,4 +120,14 @@ describe('admin unified requests', () => {
     ] as Array<AdminAgencyRequest | TravelerRequest>;
     expect(requests.filter((request) => normalizeAdminStatus(request.status) === '신규').length).toBe(2);
   });
+
+  it('keeps all requests when status is 전체', () => {
+    const result = buildUnifiedRequests([agencyRequest], [travelerRequest], 'all');
+    expect(filterUnifiedRequests(result, '', '전체').length).toBe(2);
+  });
+
+  it('keeps all requests when status is 전체 상태 as defensive fallback', () => {
+    const result = buildUnifiedRequests([agencyRequest], [travelerRequest], 'all');
+    expect(filterUnifiedRequests(result, '', '전체 상태').length).toBe(2);
+  });
 });

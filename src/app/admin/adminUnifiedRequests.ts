@@ -72,7 +72,7 @@ export function buildUnifiedRequests(agencyRequests: AdminAgencyRequest[], trave
 export function filterUnifiedRequests(requests: AdminUnifiedRequest[], query: string, status: string) {
   const normalizedQuery = query.trim().toLowerCase();
   return requests.filter((request) => {
-    const matchesStatus = status === '전체' || normalizeAdminStatus(request.status) === status;
+    const matchesStatus = status === '전체' || status === '전체 상태' || normalizeAdminStatus(request.status) === status;
     const matchesQuery =
       !normalizedQuery ||
       (isAgencyRequest(request)

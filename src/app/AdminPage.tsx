@@ -66,7 +66,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
     window.history.replaceState(null, '', page === 'dashboard' ? '/admin' : `/admin?view=${page}`);
   };
   const [query, setQuery] = useState('');
-  const [status, setStatus] = useState('전체 상태');
+  const [status, setStatus] = useState('전체');
   const [mobileMenu, setMobileMenu] = useState(false);
   const [agencyRequests, setAgencyRequests] = useState<AdminAgencyRequest[]>([]);
   const [travelerRequests, setTravelerRequests] = useState<TravelerRequest[]>([]);
@@ -139,7 +139,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
                   />
                 </label>
                 <select className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none" value={status} onChange={(event) => setStatus(event.target.value)}>
-                  <option>전체 상태</option>
+                  <option value="전체">전체 상태</option>
                   {Object.keys(statusStyle).map((item) => (
                     <option key={item} value={item}>
                       {item}
