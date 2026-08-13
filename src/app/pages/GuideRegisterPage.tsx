@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ArrowLeft, Check, CheckCircle2, Info, Loader2, Sparkles } from 'lucide-react';
-import { signInAnonymously } from 'firebase/auth';
+import { signInAnonymously, signOut } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 
 import { guideRegistrationAuth, guideRegistrationDb } from '../../lib/firebase';
@@ -168,6 +168,7 @@ export default function GuideRegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [existingRegistrationUid, setExistingRegistrationUid] = useState<string | null>(null);
 
   const toggle = (field: 'guideLanguages' | 'regions', value: string) => {
     setForm((current) => ({
@@ -190,7 +191,8 @@ export default function GuideRegisterPage() {
       const registrationRef = doc(guideRegistrationDb, 'guideRegistrations', uid);
       const registrationSnap = await getDoc(registrationRef);
       if (registrationSnap.exists()) {
-        setSubmitError('이미 등록된 가이드 신청이 있습니다.');
+        setExistingRegistrationUid(uid);
+        setSubmitError('이 브라우저에 이전 가이드 신청 기록이 있습니다.');
         return;
       }
 
@@ -223,12 +225,30 @@ export default function GuideRegisterPage() {
         setDoc(doc(guideRegistrationDb, 'guideProfiles', uid), profilePayload, { merge: true }),
         setDoc(registrationRef, registrationPayload, { merge: true }),
       ]);
+
+      try {
+        await signOut(guideRegistrationAuth);
+      } catch (error) {
+        console.warn('[guide-register] anonymous session cleanup failed', error);
+      }
+
       setSubmitted(true);
     } catch (error) {
       console.error('[guide-register] submit failed', error);
       setSubmitError('등록 중 문제가 발생했습니다. 입력 내용은 유지되니 다시 시도해 주세요.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleResetSession = async () => {
+    try {
+      await signOut(guideRegistrationAuth);
+    } catch (error) {
+      console.warn('[guide-register] anonymous session reset failed', error);
+    } finally {
+      setExistingRegistrationUid(null);
+      setSubmitError(null);
     }
   };
 
@@ -361,7 +381,19 @@ export default function GuideRegisterPage() {
             </label>
           </SectionCard>
 
-          {submitError ? <ErrorText message={submitError} /> : null}
+          {submitError ? (
+            <div className="rounded-xl border border-border bg-white p-4 text-sm text-red-700">
+              <p className="font-semibold">{submitError}</p>
+              {existingRegistrationUid ? (
+                <div className="mt-3">
+                  <p className="text-xs text-muted-foreground">다른 가이드 신청을 작성하려면 새 신청으로 시작해 주세요.</p>
+                  <button className="mt-2 rounded-xl border border-border px-3 py-2 text-sm font-semibold hover:border-coral hover:text-coral" type="button" onClick={handleResetSession}>
+                    새 신청으로 시작
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <Link className={secondaryButtonClass} to="/">
