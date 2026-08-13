@@ -14,34 +14,37 @@ import {
   Search,
   Settings,
   Sparkles,
-  UserRound,
   UsersRound,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+
 import { AdminRequestsPage } from '@/app/admin/AdminRequestsPage';
 import { AdminGuidesPage } from '@/app/admin/AdminGuidesPage';
 import { AdminPartnersPage } from '@/app/admin/AdminPartnersPage';
 import { AdminOperationsPage } from '@/app/admin/AdminOperationsPage';
 import { AdminAgencyDetailPage } from '@/app/admin/AdminAgencyDetailPage';
 import { AdminTravelerRequestPage } from '@/app/admin/AdminTravelerRequestPage';
-import { getAgencyRequests, type AdminAgencyRequest, type AdminRequestStatus } from '@/services/agencyRequests';
+import { getAgencyRequests, type AdminAgencyRequest } from '@/services/agencyRequests';
 import { getTravelerRequests } from '@/services/travelerRequests';
-import { normalizeAdminStatus } from '@/app/admin/adminUnifiedRequests';
-import type { AdminRole, TravelerRequest } from '@/types';
+import {
+  adminStatusTone,
+  buildUnifiedRequests,
+  filterUnifiedRequests,
+  isAgencyRequest,
+  normalizeAdminStatus,
+} from '@/app/admin/adminUnifiedRequests';
+import type { TravelerRequest } from '@/types';
 
 type AdminSection = 'dashboard' | 'analytics' | 'requests' | 'agencies' | 'agency-detail' | 'guides' | 'messages' | 'settings' | 'traveler-request-detail';
 
-type RequestStatus = AdminRequestStatus;
-type AdminRequest = AdminAgencyRequest;
-
 type AdminPageProps = {
   adminDisplayName?: string;
-  adminRole?: AdminRole;
+  adminRole?: string;
   onSignOut?: () => void | Promise<void>;
 };
 
-const statusStyle: Record<RequestStatus, string> = {
+const statusStyle: Record<string, string> = {
   '신규': 'bg-rose-50 text-rose-600 ring-rose-100',
   '검토 중': 'bg-amber-50 text-amber-700 ring-amber-100',
   '정보 보완': 'bg-orange-50 text-orange-700 ring-orange-100',
@@ -64,9 +67,8 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
   };
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('전체 상태');
-  const [selected, setSelected] = useState<AdminRequest | null>(null);
   const [mobileMenu, setMobileMenu] = useState(false);
-  const [requests, setRequests] = useState<AdminRequest[]>([]);
+  const [agencyRequests, setAgencyRequests] = useState<AdminAgencyRequest[]>([]);
   const [travelerRequests, setTravelerRequests] = useState<TravelerRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -75,7 +77,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
     setLoadError(false);
     void Promise.all([getAgencyRequests(), getTravelerRequests()])
       .then(([agency, traveler]) => {
-        setRequests(agency);
+        setAgencyRequests(agency);
         setTravelerRequests(traveler);
       })
       .catch(() => setLoadError(true))
@@ -84,14 +86,14 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
   useEffect(() => {
     void Promise.resolve().then(loadRequests);
   }, []);
-  const filtered = requests.filter((request) => {
-    const matchesQuery = `${request.company} ${request.event} ${request.id}`.toLowerCase().includes(query.toLowerCase());
-    return matchesQuery && (status === '전체 상태' || normalizeAdminStatus(request.status) === status);
-  });
-  const newRequestCount = [...requests, ...travelerRequests].filter((request) => normalizeAdminStatus(request.status) === '신규').length;
-  const reviewingCount = [...requests, ...travelerRequests].filter((request) => normalizeAdminStatus(request.status) === '검토 중').length;
-  const matchingCount = [...requests, ...travelerRequests].filter((request) => ['가이드 탐색', '제안 완료'].includes(normalizeAdminStatus(request.status))).length;
-  const totalRequestCount = requests.length + travelerRequests.length;
+
+  const unifiedRequests = useMemo(() => buildUnifiedRequests(agencyRequests, travelerRequests, 'all'), [agencyRequests, travelerRequests]);
+  const filtered = useMemo(() => filterUnifiedRequests(unifiedRequests, query, status), [unifiedRequests, query, status]);
+
+  const newRequestCount = unifiedRequests.filter((request) => normalizeAdminStatus(request.status) === '신규').length;
+  const reviewingCount = unifiedRequests.filter((request) => normalizeAdminStatus(request.status) === '검토 중').length;
+  const matchingCount = unifiedRequests.filter((request) => ['가이드 탐색', '제안 완료'].includes(normalizeAdminStatus(request.status))).length;
+  const totalRequestCount = unifiedRequests.length;
 
   return (
     <div className="min-h-screen bg-[#f6f7f9] text-slate-900">
@@ -110,7 +112,7 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
         {activePage === 'analytics' ? <AnalyticsPage /> : activePage === 'requests' ? <AdminRequestsPage /> : activePage === 'agency-detail' ? <AdminAgencyDetailPage agencyId={window.location.pathname.split('/').pop() || 'travelmate'} /> : activePage === 'traveler-request-detail' ? <AdminTravelerRequestPage requestId={window.location.pathname.split('/').pop() || ''} /> : activePage === 'agencies' ? <AdminPartnersPage mode="agencies" /> : activePage === 'guides' ? <AdminGuidesPage /> : activePage === 'messages' || activePage === 'settings' ? <AdminOperationsPage mode={activePage} /> : <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div><p className="mb-1 text-sm font-semibold text-rose-500">OVERVIEW</p><h1 className="text-2xl font-bold tracking-tight sm:text-3xl">안녕하세요, {adminDisplayName}님</h1><p className="mt-2 text-sm text-slate-500">현재 Firestore에서 불러온 요청 <b className="text-slate-800">{totalRequestCount}건</b>을 조회 중입니다.</p></div>
-            <span className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"><Sparkles className="size-4 text-rose-500" />읽기 전용</span>
+            <span className="flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-500"><Sparkles className="size-4 text-rose-500" />운영 지원</span>
           </div>
 
           <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -122,33 +124,190 @@ export function AdminPage({ adminDisplayName = '운영 관리자', onSignOut }: 
 
           <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,.03)]">
             <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
-              <div><h2 className="font-bold">매칭 요청</h2><p className="mt-1 text-xs text-slate-400">최근 접수된 요청부터 표시됩니다.</p></div>
+              <div>
+                <h2 className="font-bold">매칭 요청</h2>
+                <p className="mt-1 text-xs text-slate-400">최근 접수된 요청부터 표시됩니다.</p>
+              </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <label className="flex h-10 min-w-64 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3"><Search className="size-4 text-slate-400" /><input className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" placeholder="회사명, 행사명, 요청번호 검색" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
-                <select className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none" value={status} onChange={(e) => setStatus(e.target.value)}><option>전체 상태</option>{Object.keys(statusStyle).map((item) => <option key={item}>{item}</option>)}</select>
+                <label className="flex h-10 min-w-64 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
+                  <Search className="size-4 text-slate-400" />
+                  <input
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+                    placeholder="회사명, 행사명, 여행자, 요청번호, 지역 검색"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                </label>
+                <select className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none" value={status} onChange={(event) => setStatus(event.target.value)}>
+                  <option>전체 상태</option>
+                  {Object.keys(statusStyle).map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
-                <thead className="bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wide text-slate-400"><tr><th className="px-5 py-3.5">요청 / 여행사</th><th className="px-4 py-3.5">행사 일정</th><th className="px-4 py-3.5">조건</th><th className="px-4 py-3.5">담당자</th><th className="px-4 py-3.5">상태</th><th className="px-4 py-3.5" /></tr></thead>
-                <tbody className="divide-y divide-slate-100">{isLoading ? <tr><td className="px-5 py-10 text-center text-slate-400" colSpan={6}>매칭 요청을 불러오는 중입니다.</td></tr> : loadError ? <tr><td className="px-5 py-10 text-center text-slate-500" colSpan={6}>매칭 요청을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.<br /><button className="mt-3 font-semibold text-rose-500" onClick={loadRequests}>다시 시도</button></td></tr> : filtered.length === 0 ? <tr><td className="px-5 py-10 text-center text-slate-400" colSpan={6}>아직 접수된 매칭 요청이 없습니다.</td></tr> : filtered.map((request) => <tr className="cursor-pointer transition hover:bg-slate-50/70" key={request.id} onClick={() => setSelected(request)}><td className="px-5 py-4"><div className="flex items-center gap-3"><span className="flex size-9 items-center justify-center rounded-xl bg-slate-100 font-bold text-slate-500">{request.company.slice(0, 1)}</span><div><div className="flex items-center gap-2"><span className="font-semibold">{request.event}</span>{request.urgency === '긴급' && <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">긴급</span>}</div><p className="mt-1 text-xs text-slate-400">{request.id} · {request.company} · {request.createdAt}</p></div></div></td><td className="px-4 py-4"><p className="font-medium">{request.date}</p><p className="mt-1 text-xs text-slate-400">{request.region}</p></td><td className="px-4 py-4"><div className="flex gap-1">{request.languages.map((language) => <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium" key={language}>{language}</span>)}</div><p className="mt-1.5 text-xs text-slate-400">가이드 {request.guides}명</p></td><td className="px-4 py-4 text-slate-600">{request.assignee}</td><td className="px-4 py-4"><StatusBadge status={request.status} /></td><td className="px-4 py-4"><ChevronRight className="size-4 text-slate-300" /></td></tr>)}</tbody>
+                <thead className="bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-5 py-3.5">요청 정보</th>
+                    <th className="px-4 py-3.5">일정</th>
+                    <th className="px-4 py-3.5">지역 / 언어</th>
+                    <th className="px-4 py-3.5">담당자</th>
+                    <th className="px-4 py-3.5">상태</th>
+                    <th className="px-4 py-3.5" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {isLoading ? (
+                    <tr>
+                      <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
+                        매칭 요청을 불러오는 중입니다.
+                      </td>
+                    </tr>
+                  ) : loadError ? (
+                    <tr>
+                      <td className="px-5 py-10 text-center text-slate-500" colSpan={6}>
+                        매칭 요청을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
+                        <br />
+                        <button className="mt-3 font-semibold text-rose-500" onClick={loadRequests} type="button">
+                          다시 시도
+                        </button>
+                      </td>
+                    </tr>
+                  ) : filtered.length === 0 ? (
+                    <tr>
+                      <td className="px-5 py-10 text-center text-slate-400" colSpan={6}>
+                        아직 접수된 매칭 요청이 없습니다.
+                      </td>
+                    </tr>
+                  ) : (
+                    filtered.map((request) => {
+                      const agency = isAgencyRequest(request);
+                      return (
+                        <tr
+                          className="cursor-pointer transition hover:bg-slate-50/70"
+                          key={request.id}
+                          onClick={() => setActivePage('requests')}
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <span className={`flex size-9 items-center justify-center rounded-xl text-[10px] font-bold ${agency ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700'}`}>
+                                {agency ? '여행사' : '개인 여행자'}
+                              </span>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-semibold">{agency ? request.event : request.requestDetails || '여행자 매칭 요청'}</span>
+                                  {agency && request.urgency === '긴급' && (
+                                    <span className="rounded bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-rose-600">긴급</span>
+                                  )}
+                                </div>
+                                <p className="mt-1 text-xs text-slate-400">
+                                  {request.id} · {agency ? request.company : request.travelerName} · {request.createdAt}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-4">
+                            <p className="font-medium">{agency ? request.date : `${request.startDate} - ${request.endDate}`}</p>
+                            <p className="mt-1 text-xs text-slate-400">{request.region}</p>
+                          </td>
+                          <td className="px-4 py-4">
+                            {agency ? (
+                              <>
+                                <div className="flex flex-wrap gap-1">
+                                  {request.languages.map((language) => (
+                                    <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium" key={language}>
+                                      {language}
+                                    </span>
+                                  ))}
+                                </div>
+                                <p className="mt-1.5 text-xs text-slate-400">가이드 {request.guides}명</p>
+                              </>
+                            ) : (
+                              <p className="text-xs text-slate-500">{request.language || '-'}</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-4 text-slate-600">{request.assignee || '-'}</td>
+                          <td className="px-4 py-4">
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${adminStatusTone(normalizeAdminStatus(request.status))}`}>
+                              {normalizeAdminStatus(request.status)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <ChevronRight className="size-4 text-slate-300" />
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-xs text-slate-400"><span>총 {filtered.length}건</span><button className="font-semibold text-slate-600">전체 요청 보기 →</button></div>
+            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-4 text-xs text-slate-400">
+              <span>총 {filtered.length}건</span>
+              <button className="font-semibold text-slate-600" onClick={() => setActivePage('requests')} type="button">
+                전체 요청 보기 →
+              </button>
+            </div>
           </section>
         </main>}
       </div>
-      {selected && <RequestDrawer request={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
 function Sidebar({ activePage, requestCount, onNavigate, open, onClose }: { activePage: AdminSection; requestCount: number; onNavigate: (page: AdminSection) => void; open: boolean; onClose: () => void }) {
   const navigate = (page: AdminSection) => { onNavigate(page); onClose(); };
-  return <><button aria-label="메뉴 닫기" className={`fixed inset-0 z-30 bg-slate-950/30 lg:hidden ${open ? 'block' : 'hidden'}`} onClick={onClose} /><aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}><div className="flex h-16 items-center justify-between border-b border-slate-100 px-5"><div className="flex items-center gap-2.5"><span className="flex size-8 items-center justify-center rounded-xl bg-rose-500 text-white"><Sparkles className="size-4" /></span><div><p className="font-bold tracking-tight">TourMatch</p><p className="text-[10px] font-semibold uppercase tracking-[.2em] text-slate-400">Admin</p></div></div><button className="lg:hidden" onClick={onClose}><X className="size-5" /></button></div><nav className="flex-1 p-3"><p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Workspace</p><SideItem icon={LayoutDashboard} label="대시보드" active={activePage === 'dashboard'} onClick={() => navigate('dashboard')} /><SideItem icon={LineChart} label="Google Analytics" active={activePage === 'analytics'} onClick={() => navigate('analytics')} /><SideItem icon={ClipboardList} label="매칭 요청" count={requestCount ? String(requestCount) : undefined} active={activePage === 'requests'} onClick={() => navigate('requests')} /><SideItem icon={Building2} label="여행사 관리" active={activePage === 'agencies' || activePage === 'agency-detail'} onClick={() => navigate('agencies')} /><SideItem icon={UsersRound} label="가이드 관리" active={activePage === 'guides'} onClick={() => navigate('guides')} /><p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-slate-400">Management</p><SideItem icon={MessageSquareText} label="메시지" active={activePage === 'messages'} onClick={() => navigate('messages')} /><SideItem icon={Settings} label="설정" active={activePage === 'settings'} onClick={() => navigate('settings')} /></nav><div className="m-3 rounded-2xl bg-slate-50 p-4"><CircleHelp className="size-5 text-rose-500" /><p className="mt-3 text-xs font-bold">읽기 전용 MVP</p><p className="mt-1 text-[11px] leading-4 text-slate-400">상태 저장과 담당자 배정은 다음 단계에서 지원됩니다.</p></div></aside></>;
+  return (
+    <>
+      <button aria-label="메뉴 닫기" className={`fixed inset-0 z-30 bg-slate-950/30 lg:hidden ${open ? 'block' : 'hidden'}`} onClick={onClose} />
+      <aside className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="flex h-16 items-center justify-between border-b border-slate-100 px-5">
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-8 items-center justify-center rounded-xl bg-rose-500 text-white"><Sparkles className="size-4" /></span>
+            <div>
+              <p className="font-bold tracking-tight">TourMatch</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-slate-400">Admin</p>
+            </div>
+          </div>
+          <button className="lg:hidden" onClick={onClose}><X className="size-5" /></button>
+        </div>
+        <nav className="flex-1 p-3">
+          <p className="px-3 pb-2 pt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">Workspace</p>
+          <SideItem icon={LayoutDashboard} label="대시보드" active={activePage === 'dashboard'} onClick={() => navigate('dashboard')} />
+          <SideItem icon={LineChart} label="Google Analytics" active={activePage === 'analytics'} onClick={() => navigate('analytics')} />
+          <SideItem icon={ClipboardList} label="매칭 요청" count={requestCount ? String(requestCount) : undefined} active={activePage === 'requests'} onClick={() => navigate('requests')} />
+          <SideItem icon={Building2} label="여행사 관리" active={activePage === 'agencies' || activePage === 'agency-detail'} onClick={() => navigate('agencies')} />
+          <SideItem icon={UsersRound} label="가이드 관리" active={activePage === 'guides'} onClick={() => navigate('guides')} />
+          <p className="px-3 pb-2 pt-7 text-[10px] font-bold uppercase tracking-widest text-slate-400">Management</p>
+          <SideItem icon={MessageSquareText} label="메시지" active={activePage === 'messages'} onClick={() => navigate('messages')} />
+          <SideItem icon={Settings} label="설정" active={activePage === 'settings'} onClick={() => navigate('settings')} />
+        </nav>
+        <div className="m-3 rounded-2xl bg-slate-50 p-4">
+          <CircleHelp className="size-5 text-rose-500" />
+          <p className="mt-3 text-xs font-bold">운영 관리</p>
+          <p className="mt-1 text-[11px] leading-4 text-slate-400">매칭 요청의 상태와 담당자를 관리할 수 있습니다.</p>
+        </div>
+      </aside>
+    </>
+  );
 }
 
-function SideItem({ icon: Icon, label, active, count, onClick }: { icon: typeof LayoutDashboard; label: string; active?: boolean; count?: string; onClick?: () => void }) { return <button onClick={onClick} className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${active ? 'bg-rose-50 text-rose-600' : 'text-slate-500 hover:bg-slate-50'}`}><Icon className="size-[18px]" /><span>{label}</span>{count && <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? 'bg-white' : 'bg-slate-100'}`}>{count}</span>}</button>; }
+function SideItem({ icon: Icon, label, active, count, onClick }: { icon: typeof LayoutDashboard; label: string; active?: boolean; count?: string; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium ${active ? 'bg-rose-50 text-rose-600' : 'text-slate-500 hover:bg-slate-50'}`}
+    >
+      <Icon className="size-[18px]" />
+      <span>{label}</span>
+      {count && <span className={`ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold ${active ? 'bg-white' : 'bg-slate-100'}`}>{count}</span>}
+    </button>
+  );
+}
 
 function AnalyticsPage() {
   const localEvents = useMemo(() => {
@@ -162,28 +321,147 @@ function AnalyticsPage() {
     { label: '요청 완료', value: 142 + localEvents.filter((e) => e.eventName === 'agency_request_submit_success').length, rate: '11.4%', width: '31%' },
   ];
   const traffic = [{ name: 'Google 검색', value: 46, color: 'bg-blue-500' }, { name: '직접 유입', value: 28, color: 'bg-rose-500' }, { name: '네이버 검색', value: 17, color: 'bg-emerald-500' }, { name: '기타 추천', value: 9, color: 'bg-amber-400' }];
-  return <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><div className="flex items-center gap-2"><span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 via-rose-500 to-amber-400 text-white"><LineChart className="size-4" /></span><p className="text-sm font-semibold text-slate-500">Google Analytics 4</p><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-600">데모 데이터</span></div><h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">서비스 분석</h1><p className="mt-2 text-sm text-slate-500">여행사의 유입부터 매칭 요청 완료까지 전환 흐름을 확인하세요.</p></div><select className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold"><option>최근 30일</option><option>최근 7일</option><option>이번 달</option></select></div>
-    <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><AnalyticsMetric label="활성 사용자" value="1,248" change="+12.4%" /><AnalyticsMetric label="페이지 조회" value="3,892" change="+8.7%" /><AnalyticsMetric label="매칭 요청" value="142" change="+18.3%" /><AnalyticsMetric label="요청 전환율" value="11.4%" change="+1.8%p" /></section>
-    <section className="mt-6 grid gap-5 xl:grid-cols-[1.7fr_1fr]"><div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><div className="flex items-start justify-between"><div><h2 className="font-bold">사용자 추이</h2><p className="mt-1 text-xs text-slate-400">일별 활성 사용자와 요청 완료</p></div><div className="flex gap-3 text-[11px] text-slate-500"><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-blue-500" />활성 사용자</span><span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-rose-500" />요청 완료</span></div></div><div className="relative mt-8 h-64 border-b border-l border-slate-100"><div className="absolute inset-0 flex flex-col justify-between">{[0,1,2,3].map((i) => <div className="border-t border-dashed border-slate-100" key={i} />)}</div><svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 700 240"><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#3b82f6" stopOpacity=".22"/><stop offset="1" stopColor="#3b82f6" stopOpacity="0"/></linearGradient></defs><path d="M0 190 C70 180 80 145 140 155 S225 120 280 130 S370 70 420 92 S500 55 560 75 S640 28 700 42 L700 240 L0 240Z" fill="url(#area)"/><path d="M0 190 C70 180 80 145 140 155 S225 120 280 130 S370 70 420 92 S500 55 560 75 S640 28 700 42" fill="none" stroke="#3b82f6" strokeWidth="4" vectorEffect="non-scaling-stroke"/><path d="M0 222 C80 218 95 207 140 211 S230 197 280 201 S370 180 420 187 S500 173 560 178 S640 160 700 164" fill="none" stroke="#f43f5e" strokeWidth="3" vectorEffect="non-scaling-stroke"/></svg><div className="absolute -bottom-7 flex w-full justify-between text-[10px] text-slate-400"><span>7/12</span><span>7/18</span><span>7/24</span><span>7/30</span><span>8/05</span><span>8/10</span></div></div></div>
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><h2 className="font-bold">유입 채널</h2><p className="mt-1 text-xs text-slate-400">신규 사용자 기준</p><div className="mx-auto mt-7 flex size-40 items-center justify-center rounded-full" style={{background:'conic-gradient(#3b82f6 0 46%, #f43f5e 46% 74%, #10b981 74% 91%, #fbbf24 91%)'}}><div className="flex size-24 flex-col items-center justify-center rounded-full bg-white"><b className="text-xl">1,248</b><span className="text-[10px] text-slate-400">사용자</span></div></div><div className="mt-7 space-y-3">{traffic.map((item) => <div className="flex items-center text-xs" key={item.name}><span className={`mr-2 size-2 rounded-full ${item.color}`} /><span className="text-slate-500">{item.name}</span><b className="ml-auto">{item.value}%</b></div>)}</div></div></section>
-    <section className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_1fr]"><div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><h2 className="font-bold">매칭 요청 퍼널</h2><p className="mt-1 text-xs text-slate-400">agency 이벤트 기반 단계별 전환</p><div className="mt-6 space-y-3">{funnel.map((item, index) => <div className="flex items-center gap-4" key={item.label}><span className="w-28 shrink-0 text-xs text-slate-500">{item.label}</span><div className="h-10 flex-1 rounded-lg bg-slate-50"><div className={`flex h-full items-center rounded-lg px-3 text-xs font-bold text-white ${index === 3 ? 'bg-rose-500' : 'bg-slate-800'}`} style={{width:item.width}}>{item.value.toLocaleString()}</div></div><span className="w-12 text-right text-xs font-bold">{item.rate}</span></div>)}</div></div><div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"><h2 className="font-bold">인기 페이지</h2><p className="mt-1 text-xs text-slate-400">페이지 경로별 조회수</p><div className="mt-5 divide-y divide-slate-100">{[['/agency','여행사 메인','1,248'],['/agency/request','매칭 요청서','684'],['/jobs','가이드 채용 정보','421'],['/agency/complete','요청 완료','142']].map(([path,name,value], i) => <div className="flex items-center py-3 text-sm" key={path}><span className="mr-3 text-xs font-bold text-slate-300">0{i+1}</span><div><p className="font-medium">{name}</p><p className="text-[11px] text-slate-400">{path}</p></div><b className="ml-auto">{value}</b></div>)}</div></div></section>
-    <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-700"><b>GA4 연결 안내</b> · 현재 화면은 데모 데이터와 브라우저에 기록된 실제 MVP 이벤트를 함께 표시합니다. 실제 운영 지표를 사용하려면 GA4 속성 ID와 서버 측 Google Analytics Data API 연결이 필요합니다.</div>
-  </main>;
+  return (
+    <main className="mx-auto max-w-[1500px] p-4 sm:p-7 lg:p-8">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 via-rose-500 to-amber-400 text-white"><LineChart className="size-4" /></span>
+            <p className="text-sm font-semibold text-slate-500">Google Analytics 4</p>
+            <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-600">데모 데이터</span>
+          </div>
+          <h1 className="mt-3 text-2xl font-bold tracking-tight sm:text-3xl">서비스 분석</h1>
+          <p className="mt-2 text-sm text-slate-500">여행사의 유입부터 매칭 요청 완료까지 전환 흐름을 확인하세요.</p>
+        </div>
+        <select className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold"><option>최근 30일</option><option>최근 7일</option><option>이번 달</option></select>
+      </div>
+      <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><AnalyticsMetric label="활성 사용자" value="1,248" change="+12.4%" /><AnalyticsMetric label="페이지 조회" value="3,892" change="+8.7%" /><AnalyticsMetric label="매칭 요청" value="142" change="+18.3%" /><AnalyticsMetric label="요청 전환율" value="11.4%" change="+1.8%p" /></section>
+      <section className="mt-6 grid gap-5 xl:grid-cols-[1.7fr_1fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="font-bold">사용자 추이</h2>
+              <p className="mt-1 text-xs text-slate-400">일별 활성 사용자와 요청 완료</p>
+            </div>
+            <div className="flex gap-3 text-[11px] text-slate-500">
+              <span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-blue-500" />활성 사용자</span>
+              <span className="flex items-center gap-1.5"><i className="size-2 rounded-full bg-rose-500" />요청 완료</span>
+            </div>
+          </div>
+          <div className="relative mt-8 h-64 border-b border-l border-slate-100">
+            <div className="absolute inset-0 flex flex-col justify-between">{[0,1,2,3].map((i) => <div className="border-t border-dashed border-slate-100" key={i} />)}</div>
+            <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 700 240">
+              <defs>
+                <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#3b82f6" stopOpacity=".22" />
+                  <stop offset="1" stopColor="#3b82f6" stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <path d="M0 190 C70 180 80 145 140 155 S225 120 280 130 S370 70 420 92 S500 55 560 75 S640 28 700 42 L700 240 L0 240Z" fill="url(#area)" />
+              <path d="M0 190 C70 180 80 145 140 155 S225 120 280 130 S370 70 420 92 S500 55 560 75 S640 28 700 42" fill="none" stroke="#3b82f6" strokeWidth="4" vectorEffect="non-scaling-stroke" />
+              <path d="M0 222 C80 218 95 207 140 211 S230 197 280 201 S370 180 420 187 S500 173 560 178 S640 160 700 164" fill="none" stroke="#f43f5e" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+            </svg>
+            <div className="absolute -bottom-7 flex w-full justify-between text-[10px] text-slate-400">
+              <span>7/12</span>
+              <span>7/18</span>
+              <span>7/24</span>
+              <span>7/30</span>
+              <span>8/05</span>
+              <span>8/10</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <h2 className="font-bold">유입 채널</h2>
+          <p className="mt-1 text-xs text-slate-400">신규 사용자 기준</p>
+          <div className="mx-auto mt-7 flex size-40 items-center justify-center rounded-full" style={{ background: 'conic-gradient(#3b82f6 0 46%, #f43f5e 46% 74%, #10b981 74% 91%, #fbbf24 91%)' }}>
+            <div className="flex size-24 flex-col items-center justify-center rounded-full bg-white">
+              <b className="text-xl">1,248</b>
+              <span className="text-[10px] text-slate-400">사용자</span>
+            </div>
+          </div>
+          <div className="mt-7 space-y-3">
+            {traffic.map((item) => (
+              <div className="flex items-center text-xs" key={item.name}>
+                <span className={`mr-2 size-2 rounded-full ${item.color}`} />
+                <span className="text-slate-500">{item.name}</span>
+                <b className="ml-auto">{item.value}%</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="mt-5 grid gap-5 xl:grid-cols-[1.25fr_1fr]">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <h2 className="font-bold">매칭 요청 퍼널</h2>
+          <p className="mt-1 text-xs text-slate-400">agency 이벤트 기반 단계별 전환</p>
+          <div className="mt-6 space-y-3">
+            {funnel.map((item, index) => (
+              <div className="flex items-center gap-4" key={item.label}>
+                <span className="w-28 shrink-0 text-xs text-slate-500">{item.label}</span>
+                <div className="h-10 flex-1 rounded-lg bg-slate-50">
+                  <div className={`flex h-full items-center rounded-lg px-3 text-xs font-bold text-white ${index === 3 ? 'bg-rose-500' : 'bg-slate-800'}`} style={{ width: item.width }}>
+                    {item.value.toLocaleString()}
+                  </div>
+                </div>
+                <span className="w-12 text-right text-xs font-bold">{item.rate}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <h2 className="font-bold">인기 페이지</h2>
+          <p className="mt-1 text-xs text-slate-400">페이지 경로별 조회수</p>
+          <div className="mt-5 divide-y divide-slate-100">
+            {[
+              ['/agency', '여행사 메인', '1,248'],
+              ['/agency/request', '매칭 요청서', '684'],
+              ['/jobs', '가이드 채용 정보', '421'],
+              ['/agency/complete', '요청 완료', '142'],
+            ].map(([path, name, value], i) => (
+              <div className="flex items-center py-3 text-sm" key={path}>
+                <span className="mr-3 text-xs font-bold text-slate-300">0{i + 1}</span>
+                <div>
+                  <p className="font-medium">{name}</p>
+                  <p className="text-[11px] text-slate-400">{path}</p>
+                </div>
+                <b className="ml-auto">{value}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+      <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-700">
+        <b>GA4 연결 안내</b> · 현재 화면은 데모 데이터와 브라우저에 기록된 실제 MVP 이벤트를 함께 표시합니다. 실제 운영 지표를 사용하려면 GA4 속성 ID와 서버 측 Google Analytics Data API 연결이 필요합니다.
+      </div>
+    </main>
+  );
 }
 
-function AnalyticsMetric({ label, value, change }: { label: string; value: string; change: string }) { return <div className="rounded-2xl border border-slate-200 bg-white p-5"><p className="text-xs font-semibold text-slate-400">{label}</p><div className="mt-3 flex items-end justify-between"><b className="text-2xl tracking-tight">{value}</b><span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-600">{change}</span></div></div>; }
+function AnalyticsMetric({ label, value, change }: { label: string; value: string; change: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <p className="text-xs font-semibold text-slate-400">{label}</p>
+      <div className="mt-3 flex items-end justify-between">
+        <b className="text-2xl tracking-tight">{value}</b>
+        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-600">{change}</span>
+      </div>
+    </div>
+  );
+}
 
 function Metric({ label, value, note, tone, icon: Icon }: { label: string; value: number; note: string; tone: 'rose' | 'amber' | 'blue' | 'green'; icon: typeof ClipboardList }) {
   const tones = { rose: 'bg-rose-50 text-rose-500', amber: 'bg-amber-50 text-amber-600', blue: 'bg-blue-50 text-blue-600', green: 'bg-emerald-50 text-emerald-600' };
-  return <div className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex items-start justify-between"><div><p className="text-xs font-semibold text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold tracking-tight">{value}</p></div><span className={`flex size-10 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="size-5" /></span></div><p className="mt-4 text-[11px] text-slate-400">{note}</p></div>;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold text-slate-400">{label}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
+        </div>
+        <span className={`flex size-10 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="size-5" /></span>
+      </div>
+      <p className="mt-4 text-[11px] text-slate-400">{note}</p>
+    </div>
+  );
 }
-
-function StatusBadge({ status }: { status: RequestStatus }) { return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${statusStyle[status]}`}>{status}</span>; }
-
-function RequestDrawer({ request, onClose }: { request: AdminRequest; onClose: () => void }) {
-  const [status, setStatus] = useState<RequestStatus>(request.status);
-  return <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/30" onMouseDown={(e) => e.target === e.currentTarget && onClose()}><aside className="h-full w-full max-w-xl overflow-y-auto bg-white shadow-2xl"><div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-6 py-4"><div><p className="text-xs font-semibold text-rose-500">{request.id}</p><h2 className="mt-1 text-lg font-bold">매칭 요청 상세</h2></div><button className="rounded-xl border border-slate-200 p-2" onClick={onClose}><X className="size-4" /></button></div><div className="space-y-6 p-6"><div className="rounded-2xl bg-slate-900 p-5 text-white"><div className="flex items-start justify-between"><div><p className="text-xs text-slate-400">{request.company}</p><h3 className="mt-1 text-xl font-bold">{request.event}</h3></div>{request.urgency === '긴급' && <span className="rounded-full bg-rose-500 px-2.5 py-1 text-xs font-bold">긴급</span>}</div><div className="mt-5 grid grid-cols-2 gap-4 text-sm"><div><p className="text-xs text-slate-400">행사 일정</p><p className="mt-1">{request.date}</p></div><div><p className="text-xs text-slate-400">진행 지역</p><p className="mt-1">{request.region}</p></div></div></div><section><SectionTitle>처리 상태</SectionTitle><div className="grid grid-cols-2 gap-3"><label className="rounded-xl border border-slate-200 p-3 text-xs text-slate-400">현재 상태<select className="mt-1.5 w-full bg-transparent text-sm font-semibold text-slate-800 outline-none" value={status} onChange={(e) => setStatus(e.target.value as RequestStatus)}>{Object.keys(statusStyle).map((item) => <option key={item}>{item}</option>)}</select></label><label className="rounded-xl border border-slate-200 p-3 text-xs text-slate-400">담당자<select className="mt-1.5 w-full bg-transparent text-sm font-semibold text-slate-800 outline-none" defaultValue={request.assignee}><option>{request.assignee}</option><option>이지은</option><option>김도윤</option></select></label></div><p className="mt-2 text-xs text-slate-400">상태 변경 저장은 다음 단계에서 지원됩니다.</p></section><section><SectionTitle>여행사 담당자</SectionTitle><div className="rounded-2xl border border-slate-200 p-4"><div className="flex items-center gap-3"><span className="flex size-10 items-center justify-center rounded-full bg-slate-100"><UserRound className="size-5 text-slate-500" /></span><div><p className="font-semibold">{request.manager}</p><p className="text-xs text-slate-400">{request.company}</p></div></div><div className="mt-4 grid grid-cols-2 gap-3 text-xs"><div className="rounded-lg bg-slate-50 p-3"><p className="text-slate-400">연락처</p><p className="mt-1 font-medium">{request.phone}</p></div><div className="rounded-lg bg-slate-50 p-3"><p className="text-slate-400">이메일</p><p className="mt-1 truncate font-medium">{request.email}</p></div></div></div></section><section><SectionTitle>가이드 조건</SectionTitle><div className="grid grid-cols-3 gap-3"><Info label="필요 언어" value={request.languages.join(', ')} /><Info label="필요 인원" value={`${request.guides}명`} /><Info label="예산" value={request.budget} /></div></section><section><SectionTitle>주요 업무</SectionTitle><p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">{request.task}</p></section><section><SectionTitle>내부 메모</SectionTitle><textarea className="min-h-24 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-rose-300" placeholder="운영팀만 볼 수 있는 메모를 입력하세요." /></section><div className="sticky bottom-0 flex gap-3 border-t border-slate-100 bg-white py-4"><button className="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold" disabled>정보 보완 요청</button><button className="flex-1 rounded-xl bg-slate-300 px-4 py-3 text-sm font-semibold text-white" disabled>저장 준비 중</button></div></div></aside></div>;
-}
-
-function SectionTitle({ children }: { children: string }) { return <h4 className="mb-3 text-sm font-bold">{children}</h4>; }
-function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-slate-200 p-3"><p className="text-[11px] text-slate-400">{label}</p><p className="mt-1 text-sm font-semibold">{value}</p></div>; }
