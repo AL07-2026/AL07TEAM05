@@ -116,6 +116,7 @@ export function AdminGuidesPage() {
 
   const stats = useMemo(() => ({
     pending: guides.filter((g) => g.reviewStatus === 'pending').length,
+    needsInfo: guides.filter((g) => g.reviewStatus === 'needs_info').length,
     ready: guides.filter((g) => g.autoCheck.status === 'ready').length,
     blocked: guides.filter((g) => g.autoCheck.status === 'blocked').length,
     approved: guides.filter((g) => g.reviewStatus === 'approved').length,
@@ -235,9 +236,9 @@ export function AdminGuidesPage() {
 
       <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric label="대기" value={stats.pending} />
-        <Metric label="보완 필요" value={stats.blocked} />
+        <Metric label="보완 필요" value={stats.needsInfo} />
         <Metric label="승인" value={stats.approved} />
-        <Metric label="보류" value={stats.ready} />
+        <Metric label="보류" value={stats.blocked} />
       </section>
 
       <section className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
