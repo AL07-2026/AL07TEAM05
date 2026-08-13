@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { doc, getDoc, getDocs, query, collection, orderBy, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { runPreCheck, type PreCheckResult } from '@/services/guideVerification';
+import { runPreCheck, type PreCheckResult, humanizeFlag } from '@/services/guideVerification';
 import type { GuideVerificationReview } from '@/types';
 
 type GuideReviewStatus = GuideVerificationReview['reviewStatus'];
@@ -140,6 +140,11 @@ export function AdminGuidesPage() {
       const batch = writeBatch(db);
 
       if (nextStatus === 'approved') {
+        const latestPreCheck = await runPreCheck(uid).catch(() => ({ status: 'blocked' as const, flags: ['PRE_CHECK_ERROR'] }));
+        if (latestPreCheck.status === 'blocked') {
+          throw new Error('BLOCKED_PRE_CHECK');
+        }
+
         batch.update(profileRef, { profileStatus: 'verified', updatedAt: now });
         batch.update(registrationRef, { verificationStatus: 'verified', updatedAt: now });
         batch.set(doc(db, 'publicGuideProfiles', uid), {
@@ -159,6 +164,11 @@ export function AdminGuidesPage() {
         });
       } else if (nextStatus === 'needs_info') {
         batch.update(registrationRef, { verificationStatus: 'needs_info', updatedAt: now });
+        const publicRef = doc(db, 'publicGuideProfiles', uid);
+        const publicSnap = await getDoc(publicRef);
+        if (publicSnap.exists()) {
+          batch.delete(publicRef);
+        }
       } else if (nextStatus === 'rejected') {
         batch.update(profileRef, { profileStatus: 'rejected', updatedAt: now });
         batch.update(registrationRef, { verificationStatus: 'rejected', updatedAt: now });
@@ -335,7 +345,7 @@ export function AdminGuidesPage() {
                           {autoBadge.label}
                         </span>
                         {guide.autoCheck.flags.length > 0 && (
-                          <p className="mt-1 text-[11px] text-slate-400">{guide.autoCheck.flags.join(', ')}</p>
+                          <p className="mt-1 text-[11px] text-slate-400">{guide.autoCheck.flags.map(humanizeFlag).join(', ')}</p>
                         )}
                       </td>
                       <td className="px-4 py-4">
@@ -399,6 +409,19 @@ function GuideDrawer({
 
   const submit = async (next: GuideReviewStatus) => {
     setLocalError(null);
+    if (next === 'approved') {
+      if (guide.reviewStatus === 'approved') {
+        setLocalError('이미 승인된 가이드입니다.');
+        return;
+      }
+
+      const latestPreCheck = await runPreCheck(guide.uid).catch(() => ({ status: 'blocked' as const, flags: ['PRE_CHECK_ERROR'] }));
+      if (latestPreCheck.status === 'blocked') {
+        setLocalError('사전 점검 보류 항목을 먼저 확인해 주세요.');
+        return;
+      }
+    }
+
     if (next === 'needs_info' && !note.trim()) {
       setLocalError('보완 요청 사유를 입력해 주세요.');
       return;
@@ -438,7 +461,7 @@ function GuideDrawer({
             {guide.autoCheck.flags.length > 0 ? (
               <ul className="list-disc space-y-1 pl-4 text-xs text-slate-600">
                 {guide.autoCheck.flags.map((flag) => (
-                  <li key={flag}>{flag}</li>
+                  <li key={flag}>{humanizeFlag(flag)}</li>
                 ))}
               </ul>
             ) : (
@@ -462,13 +485,16 @@ function GuideDrawer({
               />
             </label>
             {(actionError || localError) && <p className="text-sm text-red-700">{actionError || localError}</p>}
+            {guide.autoCheck.status === 'blocked' && (
+              <p className="text-xs text-slate-500">사전 점검 보류 항목을 먼저 확인해 주세요.</p>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row">
               <button
                 className="flex-1 rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white disabled:opacity-70"
-                disabled={actionLoading !== null}
+                disabled={actionLoading !== null || guide.reviewStatus === 'approved' || guide.autoCheck.status === 'blocked'}
                 onClick={() => submit('approved')}
               >
-                {actionLoading === `${guide.uid}:approved` ? '처리 중...' : '승인'}
+                {actionLoading === `${guide.uid}:approved` ? '처리 중...' : guide.reviewStatus === 'approved' ? '승인됨' : '승인'}
               </button>
               <button
                 className="flex-1 rounded-xl border border-slate-200 py-3 text-sm font-semibold text-slate-800 disabled:opacity-70"
