@@ -6,8 +6,8 @@ import type { PublicGuideProfile } from '@/types';
 function EmptyState() {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-8 text-center">
-      <p className="text-sm font-semibold text-muted-foreground">아직 표시할 예시 가이드가 없습니다.</p>
-      <p className="mt-2 text-xs text-muted-foreground">검증된 가이드 DB가 연결되면 자동으로 노출됩니다.</p>
+      <p className="text-sm font-semibold text-muted-foreground">현재 공개된 검증 가이드를 준비 중입니다.</p>
+      <p className="mt-2 text-xs text-muted-foreground">관리자 승인 후 자동으로 노출됩니다.</p>
     </div>
   );
 }

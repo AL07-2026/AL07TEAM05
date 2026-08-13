@@ -1,75 +1,46 @@
+import { getDocs, query, collection, orderBy, limit } from 'firebase/firestore';
+
+import { db } from '@/lib/firebase';
 import type { PublicGuideProfile } from '@/types';
 
-export type FeaturedGuidesSource =
-  | {
-      kind: 'mock';
-      guides: readonly PublicGuideProfile[];
-    }
-  | {
-      kind: 'firestore';
-      collection: 'publicGuideProfiles';
-    };
-
-function buildFeaturedSource(): FeaturedGuidesSource {
-  // 나중에 실제 Firestore 연동으로 바꿀 때 이 반환값만 교체하면 됩니다.
-  // 예: return { kind: 'firestore', collection: 'publicGuideProfiles' };
-  return {
-    kind: 'mock',
-    guides: mockFeaturedGuides,
-  };
-}
+const publicGuideProfilesCollection = 'publicGuideProfiles';
 
 export function getFeaturedGuides(): Promise<readonly PublicGuideProfile[]> {
-  const source = buildFeaturedSource();
-
-  if (source.kind === 'firestore') {
-    // 이 블록에서 publicGuideProfiles 컬렉션에서
-    // verified == true, featured == true, displayOrder 순 3개를 조회하도록 구현하면 됩니다.
-    // 지금은 실제 Firestore 읽기를 실행하지 않습니다.
-    return Promise.resolve([]);
-  }
-
-  return Promise.resolve(source.guides);
+  const q = query(collection(db, publicGuideProfilesCollection), orderBy('displayOrder', 'asc'), limit(50));
+  return getDocs(q).then((snapshot) => {
+    const profiles = snapshot.docs.map((doc) => mapPublicGuideProfile(doc.id, doc.data() as Record<string, unknown>));
+    const verified = profiles.filter((profile) => profile.verified);
+    const selected = verified
+      .slice()
+      .sort((a, b) => {
+        const aFeatured = a.featured ? 1 : 0;
+        const bFeatured = b.featured ? 1 : 0;
+        if (bFeatured !== aFeatured) return bFeatured - aFeatured;
+        const aOrder = typeof a.displayOrder === 'number' ? a.displayOrder : Number.POSITIVE_INFINITY;
+        const bOrder = typeof b.displayOrder === 'number' ? b.displayOrder : Number.POSITIVE_INFINITY;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return (b.updatedAt || '').localeCompare(a.updatedAt || '');
+      })
+      .slice(0, 3);
+    return selected;
+  });
 }
 
-const mockFeaturedGuides: readonly PublicGuideProfile[] = [
-  {
-    id: 'example-guide-1',
-    ownerUid: 'example-guide-1',
-    name: '김민준',
-    languages: ['영어'],
-    regions: ['서울', '경기'],
-    experienceRange: '5년 이상',
-    introduction: '기업 행사와 VIP 투어 경험이 많은 영어 가이드입니다.',
-    verified: true,
-    featured: true,
-    displayOrder: 1,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'example-guide-2',
-    ownerUid: 'example-guide-2',
-    name: '이서연',
-    languages: ['일본어'],
-    regions: ['서울', '부산'],
-    experienceRange: '3~5년',
-    introduction: '문화·관광 일정 진행에 강한 일본어 가이드입니다.',
-    verified: true,
-    featured: true,
-    displayOrder: 2,
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: 'example-guide-3',
-    ownerUid: 'example-guide-3',
-    name: '박지훈',
-    languages: ['중국어'],
-    regions: ['서울', '제주'],
-    experienceRange: '1~3년',
-    introduction: '자유여행과 소규모 단체 안내에 익숙한 중국어 가이드입니다.',
-    verified: true,
-    featured: true,
-    displayOrder: 3,
-    updatedAt: new Date().toISOString(),
-  },
-];
+function mapPublicGuideProfile(id: string, data: Record<string, unknown>): PublicGuideProfile {
+  const coerce = (value: unknown) => (typeof value === 'string' ? value : '');
+  return {
+    id,
+    ownerUid: coerce(data.ownerUid),
+    name: coerce(data.name),
+    languages: Array.isArray(data.languages) ? data.languages.filter((item): item is string => typeof item === 'string') : [],
+    regions: Array.isArray(data.regions) ? data.regions.filter((item): item is string => typeof item === 'string') : [],
+    experienceRange: coerce(data.experienceRange),
+    introduction: coerce(data.introduction),
+    profilePhotoUrl: typeof data.profilePhotoUrl === 'string' ? data.profilePhotoUrl : undefined,
+    verified: Boolean(data.verified),
+    featured: Boolean(data.featured),
+    displayOrder: typeof data.displayOrder === 'number' ? data.displayOrder : null,
+    publishedAt: typeof data.publishedAt === 'string' ? data.publishedAt : undefined,
+    updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : new Date().toISOString(),
+  };
+}
