@@ -34,7 +34,7 @@ export function hasAdminAccess(data: unknown): data is { role: AdminRole; active
     data !== null &&
     'role' in data &&
     'active' in data &&
-    (data.role === 'admin' || data.role === 'superadmin') &&
+    data.role === 'admin' &&
     data.active === true
   );
 }
@@ -44,11 +44,7 @@ export function isEligibleAdminUser(user: User | null): user is User {
 }
 
 export function isOperationsAdminRole(role: unknown): role is AdminRole {
-  return role === 'admin' || role === 'superadmin';
-}
-
-export function isSuperAdminRole(role: unknown): role is 'superadmin' {
-  return role === 'superadmin';
+  return role === 'admin';
 }
 
 export async function checkAdminAccess(uid: string): Promise<AdminAccess | null> {
@@ -61,7 +57,7 @@ export async function checkAdminAccess(uid: string): Promise<AdminAccess | null>
   return {
     uid,
     displayName: typeof data.displayName === 'string' && data.displayName.trim() ? data.displayName : '운영 관리자',
-    role: data.role === 'superadmin' ? 'superadmin' : 'admin',
+    role: 'admin',
   };
 }
 
@@ -96,7 +92,7 @@ export async function getAdminUsers(): Promise<{ uid: string; email: string; dis
       uid: doc.id,
       email: typeof data.email === 'string' ? data.email : '',
       displayName: typeof data.displayName === 'string' && data.displayName.trim() ? data.displayName : '운영 관리자',
-      role: data.role === 'superadmin' ? 'superadmin' : 'admin',
+      role: 'admin',
       active: Boolean(data.active),
       createdAt: typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString(),
     };
@@ -110,10 +106,6 @@ export async function updateAdminUserRole(uid: string, role: AdminRole) {
     throw new Error('ADMIN_NOT_FOUND');
   }
 
-  const data = snapshot.data() as Record<string, unknown>;
-  const currentRole = data.role === 'superadmin' ? 'superadmin' : 'admin';
-  if (currentRole === role) return;
-
   const updatedAt = new Date().toISOString();
   await updateDoc(reference, { role, updatedAt });
 }
@@ -126,18 +118,8 @@ export async function updateAdminUserActive(uid: string, active: boolean) {
   }
 
   const data = snapshot.data() as Record<string, unknown>;
-  const currentRole = data.role === 'superadmin' ? 'superadmin' : 'admin';
   const currentActive = Boolean(data.active);
   if (currentActive === active) return;
-  if (currentRole === 'superadmin' && !active) {
-    throw new Error('SUPERADMIN_DEACTIVATE_NOT_ALLOWED');
-  }
-  if (currentRole === 'superadmin' && !active) {
-    const activeSuperAdmins = await countActiveSuperAdmins();
-    if (activeSuperAdmins <= 1) {
-      throw new Error('LAST_SUPERADMIN_NOT_ALLOWED');
-    }
-  }
 
   const updatedAt = new Date().toISOString();
   await updateDoc(reference, { active, updatedAt });
@@ -164,8 +146,7 @@ export async function getAuditLogs(options?: { limitCount?: number }) {
   const snapshot = await getDocs(q);
   return snapshot.docs.map((doc) => {
     const data = doc.data() as Record<string, unknown>;
-    const actorRoleRaw = typeof data.actorRole === 'string' ? data.actorRole : 'admin';
-    const actorRole = actorRoleRaw === 'superadmin' ? 'superadmin' : 'admin';
+    const actorRole = typeof data.actorRole === 'string' && data.actorRole === 'admin' ? 'admin' : 'admin';
     return {
       id: doc.id,
       actorUid: coerceString(data.actorUid),
@@ -185,8 +166,7 @@ export function listenAuditLogs(onUpdate: (logs: PlatformAuditLog[]) => void, li
   return onSnapshot(q, (snapshot) => {
     const logs = snapshot.docs.map((doc) => {
       const data = doc.data() as Record<string, unknown>;
-      const actorRoleRaw = typeof data.actorRole === 'string' ? data.actorRole : 'admin';
-      const actorRole = actorRoleRaw === 'superadmin' ? 'superadmin' : 'admin';
+      const actorRole = typeof data.actorRole === 'string' && data.actorRole === 'admin' ? 'admin' : 'admin';
       return {
         id: doc.id,
         actorUid: coerceString(data.actorUid),
@@ -204,13 +184,7 @@ export function listenAuditLogs(onUpdate: (logs: PlatformAuditLog[]) => void, li
 }
 
 export async function countActiveAdmins(): Promise<number> {
-  const q = query(collection(db, adminUsersCollection), where('active', '==', true), where('role', 'in', ['admin', 'superadmin']), limit(100));
-  const snapshot = await getDocs(q);
-  return snapshot.size;
-}
-
-export async function countActiveSuperAdmins(): Promise<number> {
-  const q = query(collection(db, adminUsersCollection), where('active', '==', true), where('role', '==', 'superadmin'), limit(100));
+  const q = query(collection(db, adminUsersCollection), where('active', '==', true), where('role', '==', 'admin'), limit(100));
   const snapshot = await getDocs(q);
   return snapshot.size;
 }
