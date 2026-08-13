@@ -28,7 +28,6 @@ import { Link, Outlet, RouterProvider, createBrowserRouter, useLocation, useNavi
 import GuideRegisterPage from './pages/GuideRegisterPage';
 
 import { AdminAuthGate } from '@/app/admin/AdminAuthGate';
-import { SuperadminAuthGate } from '@/app/superadmin/SuperadminAuthGate';
 import { TravelerLayout } from '@/app/traveler/TravelerLayout';
 import {
   TravelerHomePage,
@@ -1061,7 +1060,6 @@ function JobsPage() {
 
 const router = createBrowserRouter([
   { path: '/admin/*', Component: AdminAuthGate },
-  { path: '/superadmin/*', Component: SuperadminAuthGate },
   {
     path: '/',
     Component: Layout,

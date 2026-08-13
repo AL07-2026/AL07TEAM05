@@ -34,7 +34,7 @@ export type GuideVerificationLog = {
   createdAt: string;
 };
 
-export type AdminRole = 'admin' | 'superadmin';
+export type AdminRole = 'admin';
 
 export type TravelerProfile = {
   ownerUid: string;
