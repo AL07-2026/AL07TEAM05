@@ -194,27 +194,34 @@ export default function GuideRegisterPage() {
         return;
       }
 
-      const payload = {
+      const profilePayload = {
         ownerUid: uid,
         name: form.name.trim(),
-        phone: form.phone.trim(),
         languages: form.guideLanguages.length > 0 ? form.guideLanguages.filter((language) => language !== '기타') : [form.customLanguage.trim()].filter(Boolean),
         customLanguage: form.customLanguage.trim(),
         regions: form.regions,
         experienceRange: form.experience,
-        certificateLanguage: form.certificateLanguage.trim(),
-        certificateNumber: form.certificateNumber.trim(),
         introduction: form.introduction.trim(),
         profileStatus: 'pending',
-        verificationStatus: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+      };
+
+      const registrationPayload = {
+        ownerUid: uid,
+        phone: form.phone.trim(),
+        certificateLanguage: form.certificateLanguage.trim(),
+        certificateNumber: form.certificateNumber.trim(),
+        customLanguage: form.customLanguage.trim(),
+        privacyConsent: form.privacyConsent,
+        verificationStatus: 'pending',
         submittedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       };
 
       await Promise.all([
-        setDoc(doc(guideRegistrationDb, 'guideProfiles', uid), payload, { merge: true }),
-        setDoc(registrationRef, payload, { merge: true }),
+        setDoc(doc(guideRegistrationDb, 'guideProfiles', uid), profilePayload, { merge: true }),
+        setDoc(registrationRef, registrationPayload, { merge: true }),
       ]);
       setSubmitted(true);
     } catch (error) {
