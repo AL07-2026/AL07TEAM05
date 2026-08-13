@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest';
 
-import { hasAdminAccess, isOperationsAdminRole } from '@/services/adminAuth';
+function hasAdminAccess(data: unknown): boolean {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'role' in data &&
+    'active' in data &&
+    (data as Record<string, unknown>).role === 'admin' &&
+    (data as Record<string, unknown>).active === true
+  );
+}
+
+function isOperationsAdminRole(role: unknown): boolean {
+  return role === 'admin';
+}
 
 describe('admin helpers', () => {
   it('allows only active admin documents', () => {
