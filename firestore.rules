@@ -11,7 +11,8 @@ service cloud.firestore {
 
     function isPublicAgencyRequester() {
       return request.auth == null
-        || request.auth.token.firebase.sign_in_provider == 'anonymous';
+        || request.auth.token.firebase.sign_in_provider == 'anonymous'
+        || isAdmin();
     }
 
     match /adminUsers/{uid} {
