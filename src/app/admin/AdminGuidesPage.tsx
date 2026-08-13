@@ -16,8 +16,8 @@ const STATUS_OPTIONS: { value: GuideReviewStatus | 'all'; label: string }[] = [
 ];
 
 const AUTO_STATUS_BADGE: Record<PreCheckResult['status'], { label: string; tone: string }> = {
-  ready: { label: '사전 점검 통과', tone: 'bg-emerald-50 text-emerald-700' },
-  blocked: { label: '사전 점검 보류', tone: 'bg-amber-50 text-amber-700' },
+  ready: { label: '통과', tone: 'bg-emerald-50 text-emerald-700' },
+  blocked: { label: '보류', tone: 'bg-amber-50 text-amber-700' },
 };
 
 const REVIEW_STATUS_BADGE: Record<GuideReviewStatus, { label: string; tone: string }> = {
@@ -234,10 +234,18 @@ export function AdminGuidesPage() {
       </div>
 
       <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric label="검토 대기" value={stats.pending} />
-        <Metric label="사전 점검 통과" value={stats.ready} />
+        <Metric label="대기" value={stats.pending} />
         <Metric label="보완 필요" value={stats.blocked} />
         <Metric label="승인" value={stats.approved} />
+        <Metric label="보류" value={stats.ready} />
+      </section>
+
+      <section className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+        <span className="font-semibold text-slate-700">검증 상태</span>
+        <span>대기 / 보완 필요 / 승인</span>
+        <span className="mx-1">·</span>
+        <span className="font-semibold text-slate-700">자동 점검</span>
+        <span>통과 / 보류</span>
       </section>
 
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white">
