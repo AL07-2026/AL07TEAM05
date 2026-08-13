@@ -22,4 +22,8 @@ const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 
+export const guideRegistrationApp = getApps().find((candidate) => candidate.name === 'guide-registration') ?? initializeApp(firebaseConfig, 'guide-registration');
+export const guideRegistrationDb = getFirestore(guideRegistrationApp);
+export const guideRegistrationAuth = getAuth(guideRegistrationApp);
+
 export { app };

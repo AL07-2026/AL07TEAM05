@@ -1,10 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ArrowLeft, Check, CheckCircle2, Info, Loader2, Sparkles } from 'lucide-react';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
+import { doc, serverTimestamp, setDoc, getDoc } from 'firebase/firestore';
 
-import { app, db } from '../../lib/firebase';
+import { guideRegistrationAuth, guideRegistrationDb } from '../../lib/firebase';
 
 const GUIDE_LANGUAGES = ['영어', '일본어', '중국어', '베트남어', '태국어', '스페인어', '기타'];
 const REGION_OPTIONS = ['서울', '경기', '부산', '대구', '대전', '광주', '제주', '인천', '강원', '경상', '전라', '충청', '기타'];
@@ -153,10 +153,9 @@ function validate(form: typeof initialForm) {
 }
 
 async function resolveUid() {
-  const authInstance = getAuth(app);
-  let user = authInstance.currentUser;
+  let user = guideRegistrationAuth.currentUser;
   if (!user) {
-    const credential = await signInAnonymously(authInstance);
+    const credential = await signInAnonymously(guideRegistrationAuth);
     user = credential.user;
   }
   return user.uid;
@@ -188,6 +187,13 @@ export default function GuideRegisterPage() {
 
     try {
       const uid = await resolveUid();
+      const registrationRef = doc(guideRegistrationDb, 'guideRegistrations', uid);
+      const registrationSnap = await getDoc(registrationRef);
+      if (registrationSnap.exists()) {
+        setSubmitError('이미 등록된 가이드 신청이 있습니다.');
+        return;
+      }
+
       const payload = {
         ownerUid: uid,
         name: form.name.trim(),
@@ -207,11 +213,12 @@ export default function GuideRegisterPage() {
       };
 
       await Promise.all([
-        setDoc(doc(db, 'guideProfiles', uid), payload, { merge: true }),
-        setDoc(doc(db, 'guideRegistrations', uid), payload, { merge: true }),
+        setDoc(doc(guideRegistrationDb, 'guideProfiles', uid), payload, { merge: true }),
+        setDoc(registrationRef, payload, { merge: true }),
       ]);
       setSubmitted(true);
-    } catch {
+    } catch (error) {
+      console.error('[guide-register] submit failed', error);
       setSubmitError('등록 중 문제가 발생했습니다. 입력 내용은 유지되니 다시 시도해 주세요.');
     } finally {
       setSubmitting(false);
