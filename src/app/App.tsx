@@ -40,7 +40,6 @@ import {
 } from '@/app/traveler/TravelerPages';
 import { FeaturedGuidesSection } from '@/components/FeaturedGuidesSection';
 import { createAgencyRequest } from '@/services/agencyRequests';
-import { getFeaturedGuides } from '@/services/featuredGuides';
 import type { PublicGuideProfile } from '@/types';
 
 export type AgencyRequest = {
@@ -228,19 +227,57 @@ function NavLink({ children, to }: { children: ReactNode; to: string }) {
   );
 }
 
+const MOCK_FEATURED_GUIDES: readonly PublicGuideProfile[] = [
+  {
+    id: 'mock-kim-minjun',
+    ownerUid: 'mock-kim-minjun',
+    name: '김민준',
+    languages: ['영어'],
+    regions: ['서울', '경기'],
+    experienceRange: '5년 이상',
+    introduction: '기업 행사와 VIP 투어 경험이 많은 영어 가이드입니다.',
+    profilePhotoUrl: undefined,
+    verified: true,
+    featured: true,
+    displayOrder: 1,
+    publishedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'mock-lee-seoyeon',
+    ownerUid: 'mock-lee-seoyeon',
+    name: '이서연',
+    languages: ['일본어'],
+    regions: ['서울', '부산'],
+    experienceRange: '3~5년',
+    introduction: '문화·관광 일정 진행에 강한 일본어 가이드입니다.',
+    profilePhotoUrl: undefined,
+    verified: true,
+    featured: true,
+    displayOrder: 2,
+    publishedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+  {
+    id: 'mock-park-jihoon',
+    ownerUid: 'mock-park-jihoon',
+    name: '박지훈',
+    languages: ['중국어'],
+    regions: ['서울', '제주'],
+    experienceRange: '1~3년',
+    introduction: '자유여행과 소규모 단체 안내에 익숙한 중국어 가이드입니다.',
+    profilePhotoUrl: undefined,
+    verified: true,
+    featured: true,
+    displayOrder: 3,
+    publishedAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];
+
 function HomePage() {
   const navigate = useNavigate();
-  const [guides, setGuides] = useState<readonly PublicGuideProfile[]>([]);
-
-  useEffect(() => {
-    let isMounted = true;
-    void getFeaturedGuides().then((result) => {
-      if (isMounted) setGuides(result);
-    });
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const guides = MOCK_FEATURED_GUIDES;
 
   return (
     <div>
